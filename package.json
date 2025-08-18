@@ -62,6 +62,5 @@
     "react-test-renderer": "19.0.0",
     "typescript": "~5.8.3"
   },
-  "private": true,
-  "packageManager": "bun@1.2.13"
+  "private": true
 }
