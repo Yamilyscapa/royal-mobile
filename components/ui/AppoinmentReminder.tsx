@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { CalendarCheck, Clock, User, DollarSign } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
 import { ThemeText } from '@/components/Themed';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -93,7 +93,7 @@ export default function AppointmentReminder({ appointment }: AppointmentReminder
 				{/* Header with Icon */}
 				<View style={styles.header}>
 					<View style={styles.iconContainer}>
-						<CalendarCheck color="#FFFFFF" size={24} />
+						<Ionicons name="calendar" color="#FFFFFF" size={24} />
 					</View>
 					<View style={styles.headerText}>
 						<ThemeText style={styles.title}>Próxima Cita</ThemeText>
@@ -105,7 +105,7 @@ export default function AppointmentReminder({ appointment }: AppointmentReminder
 				<View style={styles.serviceSection}>
 					<View style={styles.serviceRow}>
 						<View style={styles.serviceIcon}>
-							<DollarSign color={Colors.dark.primary} size={16} />
+							<Ionicons name="cash" color={Colors.dark.primary} size={16} />
 						</View>
 						<View style={styles.serviceInfo}>
 							<ThemeText style={styles.serviceName}>{serviceName}</ThemeText>
@@ -120,9 +120,9 @@ export default function AppointmentReminder({ appointment }: AppointmentReminder
 				{barberName && (
 					<View style={styles.barberSection}>
 						<View style={styles.barberRow}>
-							<View style={styles.barberIcon}>
-								<User color={Colors.dark.primary} size={16} />
-							</View>
+													<View style={styles.barberIcon}>
+							<Ionicons name="person" color={Colors.dark.primary} size={16} />
+						</View>
 							<ThemeText style={styles.barberName}>Con {barberName}</ThemeText>
 						</View>
 					</View>
@@ -132,7 +132,7 @@ export default function AppointmentReminder({ appointment }: AppointmentReminder
 				<View style={styles.datetimeSection}>
 					<View style={styles.datetimeRow}>
 						<View style={styles.datetimeIcon}>
-							<Clock color={Colors.dark.primary} size={16} />
+							<Ionicons name="time" color={Colors.dark.primary} size={16} />
 						</View>
 						<ThemeText style={styles.datetimeText}>
 							{formatDate(appointment.appointmentDate)} a las {formatTime(appointment.timeSlot)}

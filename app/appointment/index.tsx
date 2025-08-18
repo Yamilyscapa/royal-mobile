@@ -1010,7 +1010,7 @@ export default function AppointmentScreen() {
 											borderLeftColor: '#ffc107'
 										}}>
 											<ThemeText style={{ fontSize: 12, color: '#ffc107', fontWeight: '500' }}>
-												💡 Recordatorio: Pagarás el resto ({formatPrice(parseFloat(selectedService.price) * 0.5)}) en la barbería
+												⚠️ Recordatorio: Pagarás el resto ({formatPrice(parseFloat(selectedService.price) * 0.5)}) en la barbería
 											</ThemeText>
 										</View>
 									)}

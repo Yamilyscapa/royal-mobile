@@ -181,7 +181,7 @@ export default function DatePicker({
           style={styles.button}
           secondary={!selectedDate}
         >
-          📅 {formatDate(selectedDate)}
+          {formatDate(selectedDate)}
         </Button>
       </View>
 
@@ -197,7 +197,7 @@ export default function DatePicker({
           {isLoadingTimes ? (
             <>Cargando horarios...</>
           ) : (
-            <>🕐 {getSelectedTimeLabel()}</>
+            <>{getSelectedTimeLabel()}</>
           )}
         </Button>
       </View>

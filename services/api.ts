@@ -254,6 +254,21 @@ class ApiClient {
           }
         }
 
+        // Handle rate limiting (429) with exponential backoff
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('retry-after') || '60';
+          const delay = parseInt(retryAfter) * 1000; // Convert to milliseconds
+          
+          if (__DEV__) {
+            console.warn(`Rate limited! Waiting ${delay}ms before retry available`);
+          }
+          
+          return {
+            success: false,
+            error: `Rate limit exceeded. Please wait ${Math.ceil(delay / 1000)} seconds before trying again.`,
+          };
+        }
+
         return {
           success: false,
           error: data.message || data.error || `HTTP ${response.status}`,
@@ -328,7 +343,7 @@ class ApiClient {
   }
 
   // Public methods with caching support
-  async get<T>(endpoint: string, includeAuth: boolean = true, useCache: boolean = false): Promise<ApiResponse<T>> {
+  async get<T>(endpoint: string, includeAuth: boolean = true, useCache: boolean = true): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, { method: 'GET' }, includeAuth, useCache);
   }
 

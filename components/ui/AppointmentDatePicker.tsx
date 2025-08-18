@@ -424,7 +424,7 @@ export default function AppointmentDatePicker({
           style={styles.button}
           secondary={!selectedDate}
         >
-          📅 {formatDate(selectedDate)}
+          {formatDate(selectedDate)}
         </Button>
       </View>
 
@@ -461,7 +461,7 @@ export default function AppointmentDatePicker({
               Cargando horarios...
             </>
           ) : (
-            <>🕐 {getSelectedTimeLabel()}</>
+            <>{getSelectedTimeLabel()}</>
           )}
         </Button>
       </View>

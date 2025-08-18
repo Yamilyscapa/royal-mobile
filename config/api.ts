@@ -117,5 +117,6 @@ export const API_TIMEOUTS = {
 export const API_RETRY_CONFIG = {
   maxRetries: 1, // Reduced from 2
   retryDelay: 300, // 0.3 seconds (reduced from 0.5)
-  retryOnStatusCodes: [408, 429, 500, 502, 503, 504],
+  retryOnStatusCodes: [408, 500, 502, 503, 504], // Removed 429 to avoid making rate limiting worse
+  rateLimitRetryDelay: 2000, // 2 seconds delay for rate limit errors
 }; 
