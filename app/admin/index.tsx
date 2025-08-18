@@ -51,6 +51,10 @@ const AdminPanel = () => {
       setAppointments([]);
     }
   };
+
+  // Dynamic loading states
+  const [loadingRange, setLoadingRange] = useState<'week' | 'month' | 'all'>('week');
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [services, setServices] = useState<ApiService[]>([]);
   const [schedules, setSchedules] = useState<BarberSchedule[]>([]);
   const [showAvailabilityEditor, setShowAvailabilityEditor] = useState(false);
@@ -84,6 +88,84 @@ const AdminPanel = () => {
   const [userSearchEmail, setUserSearchEmail] = useState<string>('');
   const [searchedUser, setSearchedUser] = useState<any>(null);
   const [isSearchingUser, setIsSearchingUser] = useState(false);
+
+  // Helper function to get date range based on loading range
+  const getDateRange = (range: 'week' | 'month' | 'all') => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (range) {
+      case 'week':
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 7);
+        return { startDate: weekAgo.toISOString().split('T')[0], endDate: null };
+      case 'month':
+        const monthAgo = new Date(today);
+        monthAgo.setMonth(today.getMonth() - 1);
+        return { startDate: monthAgo.toISOString().split('T')[0], endDate: null };
+      case 'all':
+        return { startDate: null, endDate: null };
+    }
+  };
+
+  // Optimized appointment loading function
+  const loadAppointmentsByRange = async (range: 'week' | 'month' | 'all') => {
+    if (!user?.isAdmin) return;
+    
+    setIsLoadingAppointments(true);
+    setAppointmentsLoaded(0);
+    setTotalAppointments(0);
+    
+    try {
+      const { startDate } = getDateRange(range);
+      
+      if (range === 'week' || range === 'month') {
+        // For week/month, load only confirmed and pending appointments after the date
+        const [confirmed, pending] = await Promise.all([
+          AdminService.getAppointmentsByStatus('confirmed'),
+          AdminService.getAppointmentsByStatus('pending')
+        ]);
+        
+        let allAppointments: ApiAppointment[] = [];
+        if (confirmed.success && confirmed.data) allAppointments.push(...confirmed.data);
+        if (pending.success && pending.data) allAppointments.push(...pending.data);
+        
+        // Filter by date if startDate is provided
+        if (startDate) {
+          const filterDate = new Date(startDate);
+          allAppointments = allAppointments.filter(apt => {
+            const aptDate = new Date(apt.appointmentDate);
+            return aptDate >= filterDate;
+          });
+        }
+        
+        setAppointmentsSafe(allAppointments);
+        setTotalAppointments(allAppointments.length);
+        setAppointmentsLoaded(allAppointments.length);
+        
+        console.log(`Loaded ${allAppointments.length} appointments for ${range} range`);
+      } else {
+        // For 'all', use the original method
+        const res = await AdminService.getAllAppointments();
+        if (res && res.success && res.data && Array.isArray(res.data)) {
+          const allAppointments = res.data.filter((apt: any) => apt.status !== 'completed');
+          setAppointmentsSafe(allAppointments);
+          setTotalAppointments(allAppointments.length);
+          setAppointmentsLoaded(allAppointments.length);
+          console.log(`Loaded ${allAppointments.length} appointments (all time)`);
+        } else {
+          setAppointmentsSafe([]);
+          setTotalAppointments(0);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading appointments by range:', error);
+      setAppointmentsSafe([]);
+      setTotalAppointments(0);
+    } finally {
+      setIsLoadingAppointments(false);
+    }
+  };
   const [isUpdatingUserRole, setIsUpdatingUserRole] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -293,28 +375,8 @@ const AdminPanel = () => {
       console.log('fetchAllData: Loading appointments for user:', user.isAdmin ? 'admin' : user.role);
       try {
         if (user.isAdmin) {
-          // Admin sees all appointments
-          setIsLoadingAppointments(true);
-          setAppointmentsLoaded(0);
-          setTotalAppointments(0);
-          
-          const res = await AppointmentsService.getAllAppointments();
-          console.log('Fetched all appointments for admin:', res);
-          console.log('Appointments response success:', res.success);
-          console.log('Appointments data length:', res.data?.length || 0);
-          
-          if (res && res.success && res.data && Array.isArray(res.data)) {
-            const allAppointments = res.data.filter((apt: any) => apt.status !== 'completed');
-            console.log('Filtered appointments (excluding completed):', allAppointments.length);
-            setAppointmentsSafe(allAppointments);
-            setTotalAppointments(allAppointments.length);
-            setAppointmentsLoaded(allAppointments.length);
-          } else {
-            console.log('No appointments data or API failed');
-            console.log('Response structure:', { success: res?.success, hasData: !!res?.data, isArray: Array.isArray(res?.data) });
-            setAppointmentsSafe([]);
-            setTotalAppointments(0);
-          }
+          // Use optimized loading by range
+          await loadAppointmentsByRange(loadingRange);
         } else if (user.role === 'staff') {
           // Staff sees only their own appointments
           const res = await AppointmentsService.getBarberAppointments(user.id);
@@ -819,6 +881,45 @@ const AdminPanel = () => {
                   </View>
                 </View>
               )}
+
+              {/* Dynamic Loading Range */}
+              <View style={styles.filterSection}>
+                <ThemeText style={styles.filterSectionTitle}>⏰ Rango de Carga</ThemeText>
+                <View style={styles.statusFilterContainer}>
+                  {[
+                    { key: 'week', label: 'Última Semana', icon: '📅' },
+                    { key: 'month', label: 'Último Mes', icon: '🗓️' },
+                    { key: 'all', label: 'Todas', icon: '🔄' }
+                  ].map(range => (
+                    <TouchableOpacity
+                      key={range.key}
+                      style={[
+                        styles.statusFilterButton,
+                        loadingRange === range.key && styles.statusFilterButtonActive,
+                        { borderColor: loadingRange === range.key ? Colors.dark.primary : Colors.dark.gray }
+                      ]}
+                      onPress={async () => {
+                        setLoadingRange(range.key as 'week' | 'month' | 'all');
+                        await loadAppointmentsByRange(range.key as 'week' | 'month' | 'all');
+                      }}
+                      disabled={isLoadingAppointments}
+                    >
+                      <ThemeText style={{
+                        ...styles.statusFilterText,
+                        ...(loadingRange === range.key ? styles.statusFilterTextActive : {})
+                      }}>
+                        {range.icon} {range.label}
+                      </ThemeText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {isLoadingMore && (
+                  <View style={styles.loadingMoreContainer}>
+                    <ActivityIndicator size="small" color={Colors.dark.primary} />
+                    <ThemeText style={styles.loadingMoreText}>Cargando citas...</ThemeText>
+                  </View>
+                )}
+              </View>
 
               <View style={styles.filterActions}>
                 <TouchableOpacity 
@@ -2093,6 +2194,18 @@ const styles = StyleSheet.create({
     color: Colors.dark.primary,
     fontSize: 14,
     fontWeight: '600',
+  },
+  loadingMoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    padding: 8,
+  },
+  loadingMoreText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: Colors.dark.textLight,
   },
   searchButton: {
     backgroundColor: Colors.dark.primary,
