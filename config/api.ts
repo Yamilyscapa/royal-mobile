@@ -22,7 +22,7 @@ export const API_CONFIG = {
   
   // Production - reads from .env or falls back to production domain
   production: {
-    baseURL: process.env.EXPO_PUBLIC_API_URL || 'https://app.theroyalbarber.com',
+    baseURL: process.env.EXPO_PUBLIC_API_URL || 'https://api.theroyalbarber.com',
   },
   
   // Get current environment
