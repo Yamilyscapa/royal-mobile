@@ -1,0 +1,26 @@
+{
+  "app": {
+    "name": "The Royal Barber",
+    "description": "Aplicación profesional de reservas de citas de barbería"
+  },
+  "permissions": {
+    "camera": "Esta aplicación usa la cámara para permitirte tomar fotos de perfil.",
+    "photos": "Esta aplicación usa la galería de fotos para permitirte seleccionar fotos de perfil.",
+    "location": "Esta aplicación usa la ubicación para ayudarte a encontrar la barbería más cercana."
+  },
+  "store": {
+    "keywords": [
+      "barbería",
+      "corte de cabello",
+      "citas",
+      "reservas",
+      "peluquería",
+      "barbero",
+      "arreglo personal",
+      "grooming",
+      "estilo"
+    ],
+    "shortDescription": "Reserva tu cita en The Royal Barber",
+    "fullDescription": "The Royal Barber es la aplicación líder para reservar citas en barberías profesionales. Programa tu próximo corte de cabello, arreglo de barba y servicios de grooming con los mejores barberos.\n\nCaracterísticas principales:\n• Reserva de citas fácil y rápida\n• Selección de servicios y barberos\n• Pagos seguros integrados\n• Historial de citas\n• Notificaciones y recordatorios\n• Gestión de perfil personal\n\nExperiencia premium en barbería al alcance de tu móvil."
+  }
+}

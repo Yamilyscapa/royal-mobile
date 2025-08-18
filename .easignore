@@ -1,0 +1,19 @@
+# Ignore parent directory files that might interfere with package manager detection
+../bun.lock
+../../bun.lock
+../package.json
+../../package.json
+../pnpm-lock.yaml
+../../pnpm-lock.yaml
+../pnpm-workspace.yaml
+../../pnpm-workspace.yaml
+
+# API directory (uses bun)
+../api/
+
+# Website directory
+../website/
+
+# Root files
+../../*.lock
+../../*.yaml

@@ -1,0 +1,175 @@
+{
+  "expo": {
+    "name": "The Royal Barber",
+    "slug": "the-royal-barber",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "app",
+    "description": "Aplicación profesional de reservas de citas de barbería. Reserva tu próximo corte de cabello con The Royal Barber.",
+    "keywords": [
+      "barbería",
+      "corte de cabello",
+      "citas",
+      "reservas",
+      "peluquería",
+      "barbero"
+    ],
+    "locales": {
+      "es": "./locales/es.json"
+    },
+    "primaryLocale": "es",
+    "primaryColor": "#000000",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "0f0e2810-b144-420f-b837-52c85b738152"
+      },
+      "privacyPolicyUrl": "https://theroyalbarber.com/privacy",
+      "termsOfServiceUrl": "https://theroyalbarber.com/terms",
+      "supportUrl": "https://theroyalbarber.com/support",
+      "companyUrl": "https://theroyalbarber.com"
+    },
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.theroyalbarber.app",
+      "buildNumber": "1",
+      "minimumOsVersion": "13.0",
+      "requireFullScreen": true,
+      "associatedDomains": [
+        "applinks:theroyalbarber.com",
+        "applinks:api.theroyalbarber.com",
+        "applinks:theroyalbarber.com",
+        "applinks:api.theroyalbarber.com"
+      ],
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLName": "com.theroyalbarber.app",
+            "CFBundleURLSchemes": [
+              "app",
+              "theroyalbarber"
+            ]
+          },
+          {
+            "CFBundleURLName": "com.theroyalbarber.app",
+            "CFBundleURLSchemes": [
+              "app",
+              "theroyalbarber"
+            ]
+          }
+        ],
+        "LSApplicationQueriesSchemes": [
+          "app",
+          "theroyalbarber",
+          "tel",
+          "mailto",
+          "app",
+          "theroyalbarber",
+          "tel",
+          "mailto"
+        ],
+        "CFBundleAllowMixedLocalizations": true,
+        "NSCameraUsageDescription": "Esta aplicación usa la cámara para permitirte tomar fotos de perfil.",
+        "NSPhotoLibraryUsageDescription": "Esta aplicación usa la galería de fotos para permitirte seleccionar fotos de perfil.",
+        "NSLocationWhenInUseUsageDescription": "Esta aplicación usa la ubicación para ayudarte a encontrar la barbería más cercana.",
+        "CFBundleDisplayName": "The Royal Barber",
+        "CFBundleName": "The Royal Barber",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.theroyalbarber.app",
+      "versionCode": 1,
+      "minSdkVersion": 21,
+      "compileSdkVersion": 34,
+      "targetSdkVersion": 34,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "app",
+              "host": "payment",
+              "pathPrefix": "/success"
+            },
+            {
+              "scheme": "app",
+              "host": "payment",
+              "pathPrefix": "/failed"
+            },
+            {
+              "scheme": "theroyalbarber",
+              "host": "payment",
+              "pathPrefix": "/success"
+            },
+            {
+              "scheme": "theroyalbarber",
+              "host": "payment",
+              "pathPrefix": "/failed"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "data": [
+            {
+              "scheme": "app",
+              "host": "payment-callback"
+            },
+            {
+              "scheme": "theroyalbarber",
+              "host": "payment-callback"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
