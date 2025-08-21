@@ -26,11 +26,13 @@ import { AuthService } from '@/services';
 import { formatPhoneAsTyping, isValidPhoneNumber } from '@/helpers/phoneFormatter';
 
 export default function ProfileScreen() {
-	const { user, signOut, refreshUser } = useAuth();
+	const { user, signOut, deleteAccount, refreshUser } = useAuth();
 	const [isEditing, setIsEditing] = useState(false);
 	const [showNotificationsModal, setShowNotificationsModal] = useState(false);
 	const [showLogoutModal, setShowLogoutModal] = useState(false);
+	const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
+	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 	const [notificationSettings, setNotificationSettings] = useState({
 		pushNotifications: true,
 		emailNotifications: true,
@@ -126,6 +128,29 @@ export default function ProfileScreen() {
 		// Here you would typically save notification settings to backend
 		Alert.alert('Éxito', '¡Configuración de notificaciones guardada!');
 		setShowNotificationsModal(false);
+	};
+
+	const handleDeleteAccount = async () => {
+		try {
+			setIsDeletingAccount(true);
+			
+			const success = await deleteAccount();
+			
+			if (success) {
+				setShowDeleteAccountModal(false);
+				Alert.alert(
+					'Cuenta Eliminada',
+					'Tu cuenta ha sido eliminada permanentemente. Lamentamos verte partir.',
+					[{ text: 'Entendido', style: 'default' }]
+				);
+			} else {
+				Alert.alert('Error', 'No se pudo eliminar la cuenta. Por favor, inténtalo de nuevo.');
+			}
+		} catch (error) {
+			Alert.alert('Error', 'Ocurrió un error al eliminar la cuenta');
+		} finally {
+			setIsDeletingAccount(false);
+		}
 	};
 
 	return (
@@ -324,6 +349,32 @@ export default function ProfileScreen() {
 								color={Colors.dark.textLight}
 							/>
 						</TouchableOpacity>
+
+						<TouchableOpacity
+							style={styles.menuItem}
+							onPress={() => setShowDeleteAccountModal(true)}
+						>
+							<View style={styles.menuItemLeft}>
+								<View style={[styles.menuIcon, { backgroundColor: '#dc3545' }]}>
+									<Ionicons
+										name="trash-outline"
+										size={20}
+										color={Colors.dark.background}
+									/>
+								</View>
+								<View style={styles.menuText}>
+									<ThemeText style={styles.menuTitle}>Eliminar Cuenta</ThemeText>
+									<ThemeText style={styles.menuSubtitle}>
+										Borrar permanentemente tu cuenta
+									</ThemeText>
+								</View>
+							</View>
+							<Ionicons
+								name="chevron-forward"
+								size={20}
+								color={Colors.dark.textLight}
+							/>
+						</TouchableOpacity>
 					</View>
 
 					{/* Legal Links Card */}
@@ -455,6 +506,53 @@ export default function ProfileScreen() {
 							>
 								<ThemeText style={styles.logoutConfirmText}>
 									{isLoading ? 'Cerrando...' : 'Cerrar Sesión'}
+								</ThemeText>
+							</TouchableOpacity>
+						</View>
+					</View>
+				</View>
+			</Modal>
+
+			{/* Delete Account Modal */}
+			<Modal
+				visible={showDeleteAccountModal}
+				animationType="fade"
+				transparent={true}
+				onRequestClose={() => setShowDeleteAccountModal(false)}
+			>
+				<View style={styles.overlay}>
+					<View style={styles.deleteAccountModal}>
+						<View style={styles.deleteAccountIcon}>
+							<Ionicons name="warning" size={48} color="#dc3545" />
+						</View>
+
+						<ThemeText style={styles.deleteAccountTitle}>¿Eliminar Cuenta?</ThemeText>
+						<ThemeText style={styles.deleteAccountMessage}>
+							⚠️ Esta acción es <ThemeText style={styles.deleteAccountBold}>irreversible</ThemeText>. 
+							{'\n\n'}
+							Se eliminarán permanentemente:
+							{'\n'}• Tu perfil personal
+							{'\n'}• Historial de citas
+							{'\n'}• Configuración de la app
+							{'\n\n'}
+							No podrás recuperar esta información una vez eliminada.
+						</ThemeText>
+
+						<View style={styles.deleteAccountActions}>
+							<TouchableOpacity
+								style={styles.deleteAccountCancelButton}
+								onPress={() => setShowDeleteAccountModal(false)}
+							>
+								<ThemeText style={styles.deleteAccountCancelText}>Cancelar</ThemeText>
+							</TouchableOpacity>
+
+							<TouchableOpacity
+								style={[styles.deleteAccountConfirmButton, isDeletingAccount && styles.deleteAccountButtonDisabled]}
+								onPress={handleDeleteAccount}
+								disabled={isDeletingAccount}
+							>
+								<ThemeText style={styles.deleteAccountConfirmText}>
+									{isDeletingAccount ? 'Eliminando...' : 'Eliminar Cuenta'}
 								</ThemeText>
 							</TouchableOpacity>
 						</View>
@@ -785,6 +883,77 @@ const styles = StyleSheet.create({
 		textAlign: 'center',
 	},
 	logoutButtonDisabled: {
+		opacity: 0.6,
+	},
+	// Delete Account Modal Styles
+	deleteAccountModal: {
+		backgroundColor: Colors.dark.tint,
+		borderRadius: 20,
+		padding: 24,
+		alignItems: 'center',
+		width: '100%',
+		maxWidth: 350,
+	},
+	deleteAccountIcon: {
+		width: 80,
+		height: 80,
+		borderRadius: 40,
+		backgroundColor: Colors.dark.background,
+		justifyContent: 'center',
+		alignItems: 'center',
+		marginBottom: 20,
+	},
+	deleteAccountTitle: {
+		fontSize: 24,
+		fontWeight: 'bold',
+		marginBottom: 12,
+		textAlign: 'center',
+		color: '#dc3545',
+	},
+	deleteAccountMessage: {
+		fontSize: 16,
+		color: Colors.dark.textLight,
+		textAlign: 'center',
+		lineHeight: 22,
+		marginBottom: 24,
+	},
+	deleteAccountBold: {
+		fontWeight: 'bold',
+		color: '#dc3545',
+	},
+	deleteAccountActions: {
+		flexDirection: 'row',
+		gap: 12,
+		width: '100%',
+	},
+	deleteAccountCancelButton: {
+		flex: 1,
+		paddingVertical: 12,
+		borderRadius: 12,
+		backgroundColor: Colors.dark.background,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	deleteAccountCancelText: {
+		fontSize: 16,
+		color: Colors.dark.text,
+		fontWeight: '500',
+	},
+	deleteAccountConfirmButton: {
+		flex: 1,
+		paddingVertical: 12,
+		paddingHorizontal: 16,
+		borderRadius: 12,
+		backgroundColor: '#dc3545',
+		alignItems: 'center',
+	},
+	deleteAccountConfirmText: {
+		fontSize: 16,
+		color: Colors.dark.background,
+		fontWeight: '500',
+		textAlign: 'center',
+	},
+	deleteAccountButtonDisabled: {
 		opacity: 0.6,
 	},
 	helperText: {

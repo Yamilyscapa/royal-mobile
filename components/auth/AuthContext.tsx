@@ -10,6 +10,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<boolean>;
   signUp: (email: string, password: string, firstName: string, lastName: string, phone: string) => Promise<boolean>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<boolean>;
   clearStorage: () => Promise<void>;
   refreshUser: () => Promise<void>;
   markWelcomeAsSeen: () => Promise<void>;
@@ -232,6 +233,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const deleteAccount = async (): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      
+      // Call delete account API
+      const response = await AuthService.deleteAccount();
+      
+      if (response.success) {
+        // Clear all local storage and reset to first time state
+        await clearStorage();
+        await deleteItem('hasSeenWelcome');
+        setIsFirstTime(true);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value = {
     user,
     isLoading,
@@ -239,6 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signIn,
     signUp,
     signOut,
+    deleteAccount,
     clearStorage,
     refreshUser,
     markWelcomeAsSeen,
