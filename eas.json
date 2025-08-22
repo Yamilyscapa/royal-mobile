@@ -50,9 +50,9 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "your-apple-id@example.com",
-        "ascAppId": "your-app-store-connect-app-id",
-        "appleTeamId": "your-apple-team-id",
+        "appleId": "theroyalbarber@hotmail.com",
+        "ascAppId": "6749601537",
+        "appleTeamId": "8VFTC3PUL4",
         "sku": "the-royal-barber-app"
       },
       "android": {
@@ -63,9 +63,9 @@
     },
     "preview": {
       "ios": {
-        "appleId": "your-apple-id@example.com",
-        "ascAppId": "your-app-store-connect-app-id",
-        "appleTeamId": "your-apple-team-id"
+        "appleId": "theroyalbarber@hotmail.com",
+        "ascAppId": "6749601537",
+        "appleTeamId": "8VFTC3PUL4"
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
