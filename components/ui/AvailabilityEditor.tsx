@@ -110,10 +110,19 @@ const AvailabilityEditor: React.FC<AvailabilityEditorProps> = ({
   };
 
   const handleSave = () => {
-    if (schedule.timeSlots.length === 0) {
-      Alert.alert('Error', 'Debe haber al menos un horario disponible');
+    // Si el día está cerrado, permitir guardar sin horarios
+    if (!schedule.isOpen && schedule.timeSlots.length === 0) {
+      onSave(schedule);
+      onClose();
       return;
     }
+    
+    // Si el día está abierto, debe tener al menos un horario
+    if (schedule.isOpen && schedule.timeSlots.length === 0) {
+      Alert.alert('Error', 'Debe haber al menos un horario disponible cuando el día está abierto');
+      return;
+    }
+    
     onSave(schedule);
     onClose();
   };

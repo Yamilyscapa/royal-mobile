@@ -638,10 +638,15 @@ const AdminPanel = () => {
         !user.id ||
         typeof dayOfWeek !== 'string' ||
         !dayNames.includes(dayOfWeek) ||
-        !Array.isArray(availableTimeSlots) ||
-        availableTimeSlots.length === 0
+        !Array.isArray(availableTimeSlots)
       ) {
         Alert.alert('Error', 'Datos inválidos para crear el horario. Intenta de nuevo.');
+        return;
+      }
+      
+      // Si el día está cerrado, permitir horarios vacíos
+      if (uiSchedule.isOpen && availableTimeSlots.length === 0) {
+        Alert.alert('Error', 'Debe haber al menos un horario disponible cuando el día está abierto');
         return;
       }
       // Check if schedule already exists
@@ -687,10 +692,11 @@ const AdminPanel = () => {
         day: 'numeric'
       });
       
-      Alert.alert(
-        'Éxito', 
-        `Horarios actualizados correctamente para ${dayLabels[targetDay]}.\n\nEste horario se aplicará a todos los "${dayLabels[targetDay]}", comenzando el ${formattedDate}.`
-      );
+      const statusMessage = uiSchedule.isOpen 
+        ? `Horarios actualizados correctamente para ${dayLabels[targetDay]}.\n\nEste horario se aplicará a todos los "${dayLabels[targetDay]}", comenzando el ${formattedDate}.`
+        : `Día marcado como cerrado para ${dayLabels[targetDay]}.\n\nEste día estará cerrado a partir del ${formattedDate}.`;
+      
+      Alert.alert('Éxito', statusMessage);
       setShowAvailabilityEditor(false);
       fetchAllData();
     } catch (error) {
@@ -1133,7 +1139,7 @@ const AdminPanel = () => {
                         {schedule && (
                           <View style={styles.scheduleIndicator}>
                             <ThemeText style={styles.scheduleCount}>
-                              {schedule.availableTimeSlots.length} horarios
+                              {schedule.availableTimeSlots.length === 0 ? 'Cerrado' : `${schedule.availableTimeSlots.length} horarios`}
                             </ThemeText>
                           </View>
                         )}
@@ -1154,6 +1160,13 @@ const AdminPanel = () => {
                               </ThemeText>
                             </View>
                           )}
+                        </View>
+                      )}
+                      {schedule && schedule.availableTimeSlots.length === 0 && (
+                        <View style={styles.closedDayIndicator}>
+                          <ThemeText style={styles.closedDayText}>
+                            🔒 Día cerrado
+                          </ThemeText>
                         </View>
                       )}
                     </TouchableOpacity>
@@ -1194,7 +1207,7 @@ const AdminPanel = () => {
                             </ThemeText>
                             {schedule && (
                               <ThemeText style={styles.scheduleCount}>
-                                {schedule.availableTimeSlots.length}
+                                {schedule.availableTimeSlots.length === 0 ? '❌' : schedule.availableTimeSlots.length}
                               </ThemeText>
                             )}
                           </TouchableOpacity>
@@ -1870,6 +1883,19 @@ const styles = StyleSheet.create({
   },
   chipMoreText: {
     fontSize: 13,
+    color: Colors.dark.background,
+    fontWeight: 'bold',
+  },
+  closedDayIndicator: {
+    backgroundColor: '#ff3b30',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  closedDayText: {
+    fontSize: 12,
     color: Colors.dark.background,
     fontWeight: 'bold',
   },

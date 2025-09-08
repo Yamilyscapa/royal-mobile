@@ -111,19 +111,19 @@ export default function AppointmentDatePicker({
         const availableSlots = response.data.availableSlots || []
         if (availableSlots.length === 0) {
           Alert.alert(
-            'Sin horarios disponibles',
-            'No hay horarios disponibles para la fecha seleccionada. Esto puede deberse a:\n\n• El barbero no trabaja en esta fecha\n• Todos los horarios están reservados\n• El horario aún no está configurado\n\nPor favor, selecciona otra fecha.',
-            [{ text: 'OK' }]
+            'No vemos horarios para esa fecha',
+            'Puede ser que el barbero no trabaje ese día o que los turnos ya estén ocupados. Prueba con otra fecha o avísanos si necesitas ayuda.',
+            [{ text: 'Entendido' }]
           )
         }
       } else {
         setAvailability(null)
         const errorMessage = response.error || 'No se pudieron cargar los horarios disponibles'
         Alert.alert(
-          'Error al cargar horarios',
-          `${errorMessage}. Esto puede deberse a:\n\n• Problemas de conexión\n• El barbero no tiene horarios configurados\n• Error en el servidor\n\nPor favor, intenta con otra fecha o contacta al administrador.`,
+          'No pudimos mostrar los horarios',
+          `${errorMessage}. Revisa tu conexión y prueba nuevamente. Si el problema continúa, intenta con otra fecha o contáctanos.`,
           [
-            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Cerrar', style: 'cancel' },
             { text: 'Reintentar', onPress: () => loadAvailability(date) }
           ]
         )
@@ -131,10 +131,10 @@ export default function AppointmentDatePicker({
     } catch (error) {
       setAvailability(null)
       Alert.alert(
-        'Error de conexión',
-        'Ocurrió un error al cargar los horarios. Esto puede deberse a:\n\n• Problemas de conexión a internet\n• Servidor temporalmente no disponible\n• Error en la aplicación\n\nPor favor, verifica tu conexión e intenta nuevamente.',
+        'Parece que no hay conexión',
+        'No pudimos cargar los horarios. Verifica tu internet y vuelve a intentarlo. Si persiste, prueba más tarde.',
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Cerrar', style: 'cancel' },
           { text: 'Reintentar', onPress: () => loadAvailability(date) }
         ]
       )

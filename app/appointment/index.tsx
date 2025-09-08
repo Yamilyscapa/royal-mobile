@@ -52,6 +52,7 @@ export default function AppointmentScreen() {
 	const [alertShown, setAlertShown] = useState(false); // Local flag to prevent duplicate alerts
 	const [paymentCancelled, setPaymentCancelled] = useState(false); // Track if payment was cancelled
 	const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
+	const [noSchedulesAlertShown, setNoSchedulesAlertShown] = useState(false);
 
 
 	useEffect(() => {
@@ -73,6 +74,13 @@ export default function AppointmentScreen() {
 			setIsLoading(false);
 		}
 	}, [user, hasAttemptedLoad]);
+
+	// Effect to check barber schedules when barbers are loaded
+	useEffect(() => {
+		if (barbers.length > 0 && !isLoadingBarbers) {
+			checkAllBarbersSchedules();
+		}
+	}, [barbers, isLoadingBarbers]);
 
 	// Note: Deep link handling has been moved to the global layout
 	// This ensures payment callbacks work from anywhere in the app
@@ -335,6 +343,53 @@ export default function AppointmentScreen() {
 			setSelectedBarber(null);
 		} finally {
 			setIsLoadingBarbers(false);
+		}
+	};
+
+	const checkBarberSchedules = async (barberId: string) => {
+		try {
+			const { SchedulesService } = await import('@/services');
+			const response = await SchedulesService.getBarberSchedules(barberId);
+			
+			if (response.success && response.data) {
+				// Check if barber has any schedules with available time slots
+				const hasAvailableSchedules = response.data.some(schedule => 
+					schedule.availableTimeSlots && schedule.availableTimeSlots.length > 0
+				);
+				return hasAvailableSchedules;
+			}
+			return false;
+		} catch (error) {
+			console.error('Error checking barber schedules:', error);
+			return false;
+		}
+	};
+
+	const checkAllBarbersSchedules = async () => {
+		if (barbers.length === 0) return;
+
+		try {
+			const scheduleChecks = await Promise.all(
+				barbers.map(barber => checkBarberSchedules(barber.id))
+			);
+
+			const hasAnySchedules = scheduleChecks.some(hasSchedules => hasSchedules);
+			
+			if (!hasAnySchedules && !noSchedulesAlertShown) {
+				setNoSchedulesAlertShown(true);
+				Alert.alert(
+					'Hoy no vemos horarios publicados',
+					'Aún no hay horarios cargados para los barberos. Escríbenos o vuelve a intentar más tarde.',
+					[
+						{
+							text: 'Entendido',
+							style: 'default'
+						}
+					]
+				);
+			}
+		} catch (error) {
+			console.error('Error checking all barber schedules:', error);
 		}
 	};
 
