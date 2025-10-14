@@ -1047,9 +1047,6 @@ export default function AppointmentScreen() {
 										} ({paymentType === 'full' ? 'Pago completo' : 'Anticipo 50%'})
 									</ThemeText>
 									<ThemeText style={{ marginBottom: 5 }}>
-										Duración: {selectedService.duration} minutos
-									</ThemeText>
-									<ThemeText style={{ marginBottom: 5 }}>
 										Fecha: {new Date(selectedDate).toLocaleDateString('es-ES')}
 									</ThemeText>
 									<ThemeText>

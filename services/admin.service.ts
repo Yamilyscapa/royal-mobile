@@ -38,24 +38,20 @@ export class AdminService {
   // Appointments Management
   static async getAllAppointments(): Promise<ApiResponse<AdminAppointment[]>> {
     try {
-      // Since there's no /appointments/all endpoint, we'll get all statuses and combine them
-      const [pending, confirmed, completed, cancelled] = await Promise.all([
-        apiClient.get<AdminAppointment[]>('/appointments/pending'),
-        apiClient.get<AdminAppointment[]>('/appointments/confirmed'),
-        apiClient.get<AdminAppointment[]>('/appointments/completed'),
-        apiClient.get<AdminAppointment[]>('/appointments/cancelled')
-      ]);
-
-      // Combine all appointments
-      const allAppointments: AdminAppointment[] = [];
-      if (pending.success && pending.data) allAppointments.push(...pending.data);
-      if (confirmed.success && confirmed.data) allAppointments.push(...confirmed.data);
-      if (completed.success && completed.data) allAppointments.push(...completed.data);
-      if (cancelled.success && cancelled.data) allAppointments.push(...cancelled.data);
-
+      // Use the working /appointments/all endpoint
+      const response = await apiClient.get<AdminAppointment[]>('/appointments/all');
+      
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: response.data
+        };
+      }
+      
       return {
-        success: true,
-        data: allAppointments
+        success: false,
+        error: response.error || 'Failed to fetch appointments',
+        data: []
       };
     } catch (error) {
       return {
@@ -68,17 +64,29 @@ export class AdminService {
   static async getAppointmentsByStatus(status: string): Promise<ApiResponse<AdminAppointment[]>> {
     try {
       console.log(`AdminService: Fetching appointments with status: ${status}`);
-      console.log('AdminService: API base URL:', apiClient);
       
-      const response = await apiClient.get<AdminAppointment[]>(`/appointments/${status}`);
-      console.log(`AdminService: Raw response for status ${status}:`, JSON.stringify(response, null, 2));
+      // Get all appointments and filter by status on the frontend
+      const allAppointmentsResponse = await this.getAllAppointments();
       
-      // Check if response is successful but data is empty
-      if (response.success && (!response.data || response.data.length === 0)) {
-        console.log(`AdminService: API returned success but no data for status ${status}`);
+      if (!allAppointmentsResponse.success || !allAppointmentsResponse.data) {
+        return {
+          success: false,
+          error: allAppointmentsResponse.error || 'Failed to fetch appointments',
+          data: []
+        };
       }
       
-      return response;
+      // Filter appointments by status
+      const filteredAppointments = allAppointmentsResponse.data.filter(appointment => 
+        appointment.status === status
+      );
+      
+      console.log(`AdminService: Filtered ${filteredAppointments.length} appointments with status ${status}`);
+      
+      return {
+        success: true,
+        data: filteredAppointments
+      };
     } catch (error) {
       console.error(`AdminService: Error fetching appointments by status ${status}:`, error);
       return {

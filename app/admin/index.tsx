@@ -120,42 +120,83 @@ const AdminPanel = () => {
       const { startDate } = getDateRange(range);
       
       if (range === 'week' || range === 'month') {
-        // For week/month, load only confirmed and pending appointments after the date
-        const [confirmed, pending] = await Promise.all([
-          AdminService.getAppointmentsByStatus('confirmed'),
-          AdminService.getAppointmentsByStatus('pending')
-        ]);
-        
-        let allAppointments: ApiAppointment[] = [];
-        if (confirmed.success && confirmed.data) allAppointments.push(...confirmed.data);
-        if (pending.success && pending.data) allAppointments.push(...pending.data);
-        
-        // Filter by date if startDate is provided
-        if (startDate) {
-          const filterDate = new Date(startDate);
-          allAppointments = allAppointments.filter(apt => {
-            const aptDate = new Date(apt.appointmentDate);
-            return aptDate >= filterDate;
-          });
-        }
-        
-        setAppointmentsSafe(allAppointments);
-        setTotalAppointments(allAppointments.length);
-        setAppointmentsLoaded(allAppointments.length);
-        
-        console.log(`Loaded ${allAppointments.length} appointments for ${range} range`);
-      } else {
-        // For 'all', use the original method
+        // For week/month, get all appointments and filter by date and status
         const res = await AdminService.getAllAppointments();
         if (res && res.success && res.data && Array.isArray(res.data)) {
-          const allAppointments = res.data.filter((apt: any) => apt.status !== 'completed');
+          let allAppointments = res.data;
+          
+          // Filter by status - only show active appointments for week/month
+          allAppointments = allAppointments.filter(apt => 
+            apt.status === 'pending' || apt.status === 'confirmed'
+          );
+          
+          // Filter by date if startDate is provided
+          if (startDate) {
+            const filterDate = new Date(startDate);
+            allAppointments = allAppointments.filter(apt => {
+              const aptDate = new Date(apt.appointmentDate);
+              return aptDate >= filterDate;
+            });
+          }
+          
+          // Sort appointments from closest to furthest (chronologically)
+          allAppointments.sort((a, b) => {
+            const dateA = new Date(a.appointmentDate);
+            const dateB = new Date(b.appointmentDate);
+            const now = new Date();
+            
+            // If dates are the same, sort by time
+            if (dateA.getTime() === dateB.getTime()) {
+              return a.timeSlot.localeCompare(b.timeSlot);
+            }
+            
+            // Sort by absolute distance from current date (closest first)
+            const distanceA = Math.abs(dateA.getTime() - now.getTime());
+            const distanceB = Math.abs(dateB.getTime() - now.getTime());
+            
+            return distanceA - distanceB;
+          });
+          
           setAppointmentsSafe(allAppointments);
           setTotalAppointments(allAppointments.length);
           setAppointmentsLoaded(allAppointments.length);
-          console.log(`Loaded ${allAppointments.length} appointments (all time)`);
+          
+          console.log(`Loaded ${allAppointments.length} appointments for ${range} range`);
         } else {
           setAppointmentsSafe([]);
           setTotalAppointments(0);
+          console.log('Failed to load appointments for range:', res?.error);
+        }
+      } else {
+        // For 'all', use the getAllAppointments endpoint which should work
+        const res = await AdminService.getAllAppointments();
+        if (res && res.success && res.data && Array.isArray(res.data)) {
+          // Sort appointments from closest to furthest (chronologically)
+          const sortedAppointments = res.data.sort((a, b) => {
+            const dateA = new Date(a.appointmentDate);
+            const dateB = new Date(b.appointmentDate);
+            const now = new Date();
+            
+            // If dates are the same, sort by time
+            if (dateA.getTime() === dateB.getTime()) {
+              return a.timeSlot.localeCompare(b.timeSlot);
+            }
+            
+            // Sort by absolute distance from current date (closest first)
+            const distanceA = Math.abs(dateA.getTime() - now.getTime());
+            const distanceB = Math.abs(dateB.getTime() - now.getTime());
+            
+            return distanceA - distanceB;
+          });
+          
+          setAppointmentsSafe(sortedAppointments);
+          setTotalAppointments(sortedAppointments.length);
+          setAppointmentsLoaded(sortedAppointments.length);
+          console.log(`Loaded ${sortedAppointments.length} appointments (all time, all statuses)`);
+        } else {
+          setAppointmentsSafe([]);
+          setTotalAppointments(0);
+          console.log('Failed to load all appointments:', res?.error);
         }
       }
     } catch (error) {
@@ -297,7 +338,25 @@ const AdminPanel = () => {
       });
     }
 
-    setFilteredAppointments(filtered);
+    // Sort appointments from closest to furthest (chronologically)
+    const sortedFiltered = filtered.sort((a, b) => {
+      const dateA = new Date(a.appointmentDate);
+      const dateB = new Date(b.appointmentDate);
+      const now = new Date();
+      
+      // If dates are the same, sort by time
+      if (dateA.getTime() === dateB.getTime()) {
+        return a.timeSlot.localeCompare(b.timeSlot);
+      }
+      
+      // Sort by absolute distance from current date (closest first)
+      const distanceA = Math.abs(dateA.getTime() - now.getTime());
+      const distanceB = Math.abs(dateB.getTime() - now.getTime());
+      
+      return distanceA - distanceB;
+    });
+    
+    setFilteredAppointments(sortedFiltered);
   };
 
   // Apply filters whenever appointments or filter values change
@@ -382,8 +441,11 @@ const AdminPanel = () => {
           const res = await AppointmentsService.getBarberAppointments(user.id);
           console.log('Fetched barber appointments for staff:', res);
           if (res && res.success && res.data && Array.isArray(res.data)) {
-            const filteredAppointments = res.data.filter((apt: any) => apt.status !== 'completed');
-            console.log('Staff appointments (excluding completed):', filteredAppointments.length);
+            // Show all appointments when loadingRange is 'all', otherwise exclude completed
+            const filteredAppointments = loadingRange === 'all' 
+              ? res.data 
+              : res.data.filter((apt: any) => apt.status !== 'completed');
+            console.log(`Staff appointments (${loadingRange === 'all' ? 'including all statuses' : 'excluding completed'}):`, filteredAppointments.length);
             setAppointmentsSafe(filteredAppointments);
           } else {
             console.log('No staff appointments data');
@@ -395,8 +457,11 @@ const AdminPanel = () => {
           const res = await AppointmentsService.getUserAppointments();
           console.log('Fetched user appointments:', res);
           if (res && res.success && res.data && Array.isArray(res.data)) {
-            const filteredAppointments = res.data.filter((apt: any) => apt.status !== 'completed');
-            console.log('User appointments (excluding completed):', filteredAppointments.length);
+            // Show all appointments when loadingRange is 'all', otherwise exclude completed
+            const filteredAppointments = loadingRange === 'all' 
+              ? res.data 
+              : res.data.filter((apt: any) => apt.status !== 'completed');
+            console.log(`User appointments (${loadingRange === 'all' ? 'including all statuses' : 'excluding completed'}):`, filteredAppointments.length);
             setAppointmentsSafe(filteredAppointments);
           } else {
             console.log('No user appointments data');
@@ -465,10 +530,21 @@ const AdminPanel = () => {
 
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    
+    // Spanish day names
+    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    
+    // Spanish month names
+    const monthNames = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+    
+    const dayName = dayNames[date.getDay()];
+    const day = date.getDate();
+    const monthName = monthNames[date.getMonth()];
+    
+    return `${dayName} ${day} de ${monthName}`;
   };
 
   const formatDateToDDMMYYYY = (isoDate: string) => {
@@ -822,7 +898,8 @@ const AdminPanel = () => {
                     { key: 'all', label: 'Todas', color: '#6c757d' },
                     { key: 'pending', label: 'Pendientes', color: '#ffc107' },
                     { key: 'confirmed', label: 'Confirmadas', color: '#28a745' },
-                    { key: 'cancelled', label: 'Canceladas', color: '#dc3545' }
+                    { key: 'cancelled', label: 'Canceladas', color: '#dc3545' },
+                    { key: 'completed', label: 'Completadas', color: '#2ecc40' }
                   ].map(status => (
                     <TouchableOpacity
                       key={status.key}
@@ -1046,6 +1123,20 @@ const AdminPanel = () => {
                           {updatingId === appointment.id + 'completed' ? 'Completando...' : 'Completar'}
                         </ThemeText>
                       </TouchableOpacity>
+                    )}
+                    {appointment.status === 'completed' && (
+                      <View style={styles.completedStatusContainer}>
+                        <ThemeText style={styles.completedStatusText}>
+                          ✅ Cita completada exitosamente
+                        </ThemeText>
+                      </View>
+                    )}
+                    {appointment.status === 'cancelled' && (
+                      <View style={styles.cancelledStatusContainer}>
+                        <ThemeText style={styles.cancelledStatusText}>
+                          ❌ Cita cancelada
+                        </ThemeText>
+                      </View>
                     )}
                   </View>
                 </View>
@@ -1395,46 +1486,58 @@ const AdminPanel = () => {
           style={[styles.tab, activeTab === 'appointments' && styles.activeTab]}
           onPress={() => setActiveTab('appointments')}
         >
-          <ThemeText style={{
-            ...styles.tabText,
-            ...(activeTab === 'appointments' ? styles.activeTabText : {})
-          }}>
-            📅  Citas
-          </ThemeText>
+          <View style={styles.tabContent}>
+            <ThemeText style={styles.tabIcon}>📅</ThemeText>
+            <ThemeText style={{
+              ...styles.tabText,
+              ...(activeTab === 'appointments' ? styles.activeTabText : {})
+            }}>
+              Citas
+            </ThemeText>
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'services' && styles.activeTab]}
           onPress={() => setActiveTab('services')}
         >
-          <ThemeText style={{
-            ...styles.tabText,
-            ...(activeTab === 'services' ? styles.activeTabText : {})
-          }}>
-            ✂️ Servicios
-          </ThemeText>
+          <View style={styles.tabContent}>
+            <ThemeText style={styles.tabIcon}>✂️</ThemeText>
+            <ThemeText style={{
+              ...styles.tabText,
+              ...(activeTab === 'services' ? styles.activeTabText : {})
+            }}>
+              Servicios
+            </ThemeText>
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'availability' && styles.activeTab]}
           onPress={() => setActiveTab('availability')}
         >
-          <ThemeText style={{
-            ...styles.tabText,
-            ...(activeTab === 'availability' ? styles.activeTabText : {})
-          }}>
-            🕐 Horarios
-          </ThemeText>
+          <View style={styles.tabContent}>
+            <ThemeText style={styles.tabIcon}>🕐</ThemeText>
+            <ThemeText style={{
+              ...styles.tabText,
+              ...(activeTab === 'availability' ? styles.activeTabText : {})
+            }}>
+              Horarios
+            </ThemeText>
+          </View>
         </TouchableOpacity>
         {user?.isAdmin && (
           <TouchableOpacity
             style={[styles.tab, activeTab === 'users' && styles.activeTab]}
             onPress={() => setActiveTab('users')}
           >
-            <ThemeText style={{
-              ...styles.tabText,
-              ...(activeTab === 'users' ? styles.activeTabText : {})
-            }}>
-              👥 Usuarios
-            </ThemeText>
+            <View style={styles.tabContent}>
+              <ThemeText style={styles.tabIcon}>👥</ThemeText>
+              <ThemeText style={{
+                ...styles.tabText,
+                ...(activeTab === 'users' ? styles.activeTabText : {})
+              }}>
+                Usuarios
+              </ThemeText>
+            </View>
           </TouchableOpacity>
         )}
       </View>
@@ -1651,14 +1754,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  tabContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabIcon: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
   activeTab: {
     borderBottomWidth: 2,
     borderBottomColor: Colors.dark.primary,
   },
   tabText: {
-    fontSize: 16,
+    fontSize: 14,
     color: Colors.dark.textLight,
-    lineHeight: 25,
     textAlign: 'center',
   },
   activeTabText: {
@@ -2272,6 +2382,36 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
     color: Colors.dark.background,
+    textAlign: 'center',
+  },
+  completedStatusContainer: {
+    backgroundColor: '#2ecc40',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  completedStatusText: {
+    color: Colors.dark.background,
+    fontWeight: 'bold',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  cancelledStatusContainer: {
+    backgroundColor: '#e74c3c',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  cancelledStatusText: {
+    color: Colors.dark.background,
+    fontWeight: 'bold',
+    fontSize: 14,
     textAlign: 'center',
   },
 });

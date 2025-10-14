@@ -63,11 +63,20 @@ export default function AppointmentReminder({ appointment }: AppointmentReminder
 				return 'Fecha inválida';
 			}
 
-			return date.toLocaleDateString('es-ES', {
-				weekday: 'short',
-				month: 'short',
-				day: 'numeric',
-			});
+			// Spanish day names
+			const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+			
+			// Spanish month names
+			const monthNames = [
+				'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+				'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+			];
+			
+			const dayName = dayNames[date.getDay()];
+			const day = date.getDate();
+			const monthName = monthNames[date.getMonth()];
+			
+			return `${dayName} ${day} de ${monthName}`;
 		} catch (error) {
 			return 'Fecha inválida';
 		}

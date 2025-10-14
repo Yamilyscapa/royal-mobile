@@ -2,10 +2,31 @@ import React, { useState, useEffect } from "react"
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Alert, SafeAreaView } from "react-native"
 
 // You'll need to install: npm install react-native-calendars
-import { Calendar } from "react-native-calendars"
+import { Calendar, LocaleConfig } from "react-native-calendars"
 import Colors from "@/constants/Colors"
 import Button from "@/components/Button"
 import { SchedulesService } from '@/services'
+
+// Configure Spanish locale
+LocaleConfig.locales['es'] = {
+  monthNames: [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ],
+  monthNamesShort: [
+    'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+  ],
+  dayNames: [
+    'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
+  ],
+  dayNamesShort: [
+    'Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'
+  ],
+  today: 'Hoy'
+};
+
+LocaleConfig.defaultLocale = 'es';
 
 // Generate available hours (9 AM to 5 PM)
 const availableHours = Array.from({ length: 9 }, (_, i) => {

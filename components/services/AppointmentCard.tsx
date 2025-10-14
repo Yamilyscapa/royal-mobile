@@ -23,26 +23,31 @@ export default function AppointmentCard({ appointment, onCancel, onReschedule, o
 	};
 
 	const formatDate = (dateString: string) => {
+		let date: Date;
+		
 		// Handle dd/mm/yyyy format from API
 		if (dateString.includes('/')) {
 			const [day, month, year] = dateString.split('/');
-			const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-			return date.toLocaleDateString('es-ES', {
-				weekday: 'short',
-				year: 'numeric',
-				month: 'short',
-				day: 'numeric',
-			});
+			date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
 		} else {
 			// Fallback to standard date parsing
-			const date = new Date(dateString);
-			return date.toLocaleDateString('es-ES', {
-				weekday: 'short',
-				year: 'numeric',
-				month: 'short',
-				day: 'numeric',
-			});
+			date = new Date(dateString);
 		}
+		
+		// Spanish day names
+		const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+		
+		// Spanish month names
+		const monthNames = [
+			'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+			'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+		];
+		
+		const dayName = dayNames[date.getDay()];
+		const day = date.getDate();
+		const monthName = monthNames[date.getMonth()];
+		
+		return `${dayName} ${day} de ${monthName}`;
 	};
 
 	const formatPrice = (price: string | number) => {

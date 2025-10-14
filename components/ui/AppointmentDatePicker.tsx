@@ -1,10 +1,31 @@
 import React, { useState, useEffect } from "react"
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Alert, SafeAreaView, ActivityIndicator } from "react-native"
-import { Calendar } from "react-native-calendars"
+import { Calendar, LocaleConfig } from "react-native-calendars"
 import Colors from "@/constants/Colors"
 import Button from "@/components/Button"
 import { SchedulesService } from "@/services"
 import type { AvailabilityResponse, TimeSlot } from "@/services"
+
+// Configure Spanish locale
+LocaleConfig.locales['es'] = {
+  monthNames: [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ],
+  monthNamesShort: [
+    'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+  ],
+  dayNames: [
+    'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
+  ],
+  dayNamesShort: [
+    'Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'
+  ],
+  today: 'Hoy'
+};
+
+LocaleConfig.defaultLocale = 'es';
 
 interface AppointmentDatePickerProps {
   barberId: string
