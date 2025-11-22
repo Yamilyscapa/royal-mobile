@@ -47,6 +47,10 @@ export default function LoginScreen() {
     router.push('/auth/signup');
   };
 
+  const navigateToRecover = () => {
+    router.push('/auth/recover');
+  };
+
   const navigateToWelcome = () => {
     router.push('/auth/welcome');
   };
@@ -117,6 +121,13 @@ export default function LoginScreen() {
                   <Text style={styles.dividerText}>o</Text>
                   <View style={styles.dividerLine} />
                 </View>
+
+                <TouchableOpacity
+                  style={styles.linkButton}
+                  onPress={navigateToRecover}
+                >
+                  <Text style={styles.linkText}>¿Olvidaste tu contraseña? Recuperar acceso</Text>
+                </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.secondaryButton}
@@ -227,6 +238,16 @@ const styles = StyleSheet.create({
     color: Colors.dark.primary,
     fontSize: 14,
     fontWeight: '500',
+  },
+  linkButton: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  linkText: {
+    color: Colors.dark.textLight,
+    fontSize: 14,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
   },
   backButton: {
     position: 'relative',

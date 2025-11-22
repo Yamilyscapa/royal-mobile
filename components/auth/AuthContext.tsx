@@ -9,6 +9,8 @@ interface AuthContextType {
   isFirstTime: boolean;
   signIn: (email: string, password: string) => Promise<boolean>;
   signUp: (email: string, password: string, firstName: string, lastName: string, phone: string) => Promise<boolean>;
+  requestPasswordRecovery: (emailOrPhone: string) => Promise<boolean>;
+  resetPasswordWithCode: (emailOrPhone: string, code: string, newPassword: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<boolean>;
   clearStorage: () => Promise<void>;
@@ -212,6 +214,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const requestPasswordRecovery = async (emailOrPhone: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      const response = await AuthService.requestRecovery({ emailOrPhone });
+      return response.success;
+    } catch (error) {
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetPasswordWithCode = async (emailOrPhone: string, code: string, newPassword: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      const response = await AuthService.resetWithRecoveryCode({ emailOrPhone, code, newPassword });
+
+      if (response.success && response.data) {
+        setUser(response.data.user);
+        await setItem('user', JSON.stringify(response.data.user));
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const signOut = async () => {
     try {
       setIsLoading(true);
@@ -262,6 +295,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isFirstTime,
     signIn,
     signUp,
+    requestPasswordRecovery,
+    resetPasswordWithCode,
     signOut,
     deleteAccount,
     clearStorage,

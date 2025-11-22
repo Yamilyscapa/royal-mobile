@@ -28,6 +28,21 @@ export interface RegisterData {
   role: 'customer' | 'staff' | 'admin';
 }
 
+export interface RecoveryRequestPayload {
+  emailOrPhone: string;
+}
+
+export interface ResetWithRecoveryCodePayload {
+  emailOrPhone: string;
+  code: string;
+  newPassword: string;
+}
+
+export interface RecoveryCodeResponse {
+  code: string;
+  message?: string;
+}
+
 export interface AuthResponse {
   user: User;
   accessToken: string;
@@ -164,4 +179,48 @@ export class AuthService {
       return false;
     }
   }
-} 
+
+  // Request password recovery via recovery code
+  static async requestRecovery(payload: RecoveryRequestPayload): Promise<ApiResponse<{ message?: string }>> {
+    try {
+      return await apiClient.post<{ message?: string }>('/auth/recovery/request', payload, false);
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Recovery request failed',
+      };
+    }
+  }
+
+  // Reset password using recovery code
+  static async resetWithRecoveryCode(
+    payload: ResetWithRecoveryCodePayload
+  ): Promise<ApiResponse<AuthResponse>> {
+    try {
+      const response = await apiClient.post<AuthResponse>('/auth/recovery/verify', payload, false);
+
+      if (response.success && response.data) {
+        await apiClient.setTokens(response.data.accessToken, response.data.refreshToken);
+      }
+
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Recovery verification failed',
+      };
+    }
+  }
+
+  // Generate or retrieve a recovery code for the authenticated user
+  static async generateRecoveryCode(): Promise<ApiResponse<RecoveryCodeResponse>> {
+    try {
+      return await apiClient.post<RecoveryCodeResponse>('/auth/recovery/code');
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to generate recovery code',
+      };
+    }
+  }
+}
