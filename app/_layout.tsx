@@ -20,6 +20,7 @@ import 'react-native-reanimated';
 // Local imports
 import { AuthProvider, useAuth } from '@/components/auth/AuthContext';
 import LoadingScreen from '@/components/auth/LoadingScreen';
+import { NotificationService } from '@/services';
 
 export {
 	// Catch any errors thrown by the Layout component.
@@ -38,6 +39,20 @@ function RootLayoutNav() {
 	const { user, isLoading, isFirstTime } = useAuth();
 	const [forceUpdate, setForceUpdate] = React.useState(0);
 	const router = useRouter();
+
+	// Initialize notifications when app starts
+	React.useEffect(() => {
+		const initializeNotifications = async () => {
+			try {
+				await NotificationService.requestPermissions();
+				console.log('Notifications initialized successfully');
+			} catch (error) {
+				console.error('Error initializing notifications:', error);
+			}
+		};
+
+		initializeNotifications();
+	}, []);
 
 
 
@@ -73,6 +88,29 @@ function RootLayoutNav() {
 			
 			// Normalize URL to handle both schemes
 			const normalizedUrl = url.replace('theroyalbarber://', 'app://');
+
+            // Handle Password Reset Deep Link
+            if (
+                normalizedUrl.includes('app://auth/reset-password') ||
+                normalizedUrl.includes('theroyalbarber://auth/reset-password')
+            ) {
+                let urlObj;
+                try {
+                    urlObj = new URL(url);
+                } catch (urlError) {
+                    console.error('Failed to parse reset password URL:', url, urlError);
+                    return;
+                }
+
+                const token = urlObj.searchParams.get('token');
+                if (token) {
+                    router.replace({
+                        pathname: '/auth/reset-password',
+                        params: { token }
+                    });
+                    return;
+                }
+            }
 			
             // Reset flags when a payment-related deep link is received
             if (normalizedUrl.includes('app://payment/') || normalizedUrl.includes('app://payment-callback')) {
@@ -306,7 +344,9 @@ function RootLayoutNav() {
 					'app://payment/success',
 					'theroyalbarber://payment/success',
 					'app://payment/failed',
-					'theroyalbarber://payment/failed'
+					'theroyalbarber://payment/failed',
+                    'app://auth/reset-password',
+                    'theroyalbarber://auth/reset-password'
 				];
 				
 				for (const url of testUrls) {
@@ -383,6 +423,8 @@ function RootLayoutNav() {
 					<Stack.Screen name="auth/welcome" options={{ headerShown: false }} />
 					<Stack.Screen name="auth/login" options={{ headerShown: false }} />
 					<Stack.Screen name="auth/signup" options={{ headerShown: false }} />
+					<Stack.Screen name="auth/forgot-password" options={{ headerShown: false }} />
+					<Stack.Screen name="auth/reset-password" options={{ headerShown: false }} />
 					{/* Payment screens available even when not authenticated for deep link handling */}
 					<Stack.Screen name="payment/success" options={{ headerShown: false }} />
 					<Stack.Screen name="payment/failed" options={{ headerShown: false }} />
@@ -402,6 +444,8 @@ function RootLayoutNav() {
 				<Stack.Screen name="auth/welcome" options={{ headerShown: false }} />
 				<Stack.Screen name="auth/login" options={{ headerShown: false }} />
 				<Stack.Screen name="auth/signup" options={{ headerShown: false }} />
+				<Stack.Screen name="auth/forgot-password" options={{ headerShown: false }} />
+				<Stack.Screen name="auth/reset-password" options={{ headerShown: false }} />
 				<Stack.Screen name="admin/index" options={{ headerShown: false }} />
 				<Stack.Screen name="appointment/index" options={{ headerShown: false }} />
 				<Stack.Screen name="appointment/reschedule/[appointmentId]" options={{ headerShown: false }} />

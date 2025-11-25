@@ -24,6 +24,7 @@ import Colors from '@/constants/Colors';
 import { useAuth } from '@/components/auth/AuthContext';
 import { AuthService } from '@/services';
 import { formatPhoneAsTyping, isValidPhoneNumber } from '@/helpers/phoneFormatter';
+import NotificationStatus from '@/components/NotificationStatus';
 
 export default function ProfileScreen() {
 	const { user, signOut, deleteAccount, refreshUser } = useAuth();
@@ -309,6 +310,9 @@ export default function ProfileScreen() {
 						</View>
 					</View>
 
+					{/* Notification Status */}
+					<NotificationStatus />
+
 					{/* Settings Card */}
 					<View style={styles.settingsCard}>
 						<View style={styles.cardHeader}>
@@ -439,7 +443,7 @@ export default function ProfileScreen() {
 
 					{/* App Version */}
 					<View style={styles.versionSection}>
-						<ThemeText style={styles.versionText}>Versión 1.0.0</ThemeText>
+						<ThemeText style={styles.versionText}>Versión {process.env.EXPO_PUBLIC_APP_VERSION || '1.3.0'}</ThemeText>
 					</View>
 				</Container>
 			</ScrollView>

@@ -47,12 +47,12 @@ export default function LoginScreen() {
     router.push('/auth/signup');
   };
 
-  const navigateToRecover = () => {
-    router.push('/auth/recover');
-  };
-
   const navigateToWelcome = () => {
     router.push('/auth/welcome');
+  };
+
+  const navigateToForgotPassword = () => {
+    router.push('/auth/forgot-password');
   };
 
   return (
@@ -107,6 +107,15 @@ export default function LoginScreen() {
                 </View>
 
                 <TouchableOpacity
+                  style={styles.forgotPasswordButton}
+                  onPress={navigateToForgotPassword}
+                >
+                  <Text style={styles.forgotPasswordText}>
+                    ¿Olvidaste tu contraseña?
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
                   style={[styles.button, isLoading && styles.buttonDisabled]}
                   onPress={handleLogin}
                   disabled={isLoading}
@@ -121,13 +130,6 @@ export default function LoginScreen() {
                   <Text style={styles.dividerText}>o</Text>
                   <View style={styles.dividerLine} />
                 </View>
-
-                <TouchableOpacity
-                  style={styles.linkButton}
-                  onPress={navigateToRecover}
-                >
-                  <Text style={styles.linkText}>¿Olvidaste tu contraseña? Recuperar acceso</Text>
-                </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.secondaryButton}
@@ -199,6 +201,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'transparent',
   },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 24,
+  },
+  forgotPasswordText: {
+    color: Colors.dark.primary,
+    fontSize: 14,
+    fontWeight: '500',
+  },
   button: {
     backgroundColor: Colors.dark.primary,
     borderRadius: 12,
@@ -238,16 +249,6 @@ const styles = StyleSheet.create({
     color: Colors.dark.primary,
     fontSize: 14,
     fontWeight: '500',
-  },
-  linkButton: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  linkText: {
-    color: Colors.dark.textLight,
-    fontSize: 14,
-    fontWeight: '500',
-    textDecorationLine: 'underline',
   },
   backButton: {
     position: 'relative',

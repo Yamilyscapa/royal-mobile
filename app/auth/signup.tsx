@@ -18,6 +18,12 @@ import Colors from '@/constants/Colors';
 import ScreenWrapper from '@/components/ui/ScreenWrapper';
 import { formatPhoneAsTyping, isValidPhoneNumber } from '@/helpers/phoneFormatter';
 
+const PASSWORD_REQUIREMENTS_TEXT =
+  'La contraseña debe tener al menos 8 caracteres e incluir letras, números y un carácter especial (ej. @ !).';
+
+const isPasswordValid = (value: string) =>
+  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(value);
+
 export default function SignUpScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -39,8 +45,8 @@ export default function SignUpScreen() {
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+    if (!isPasswordValid(password)) {
+      Alert.alert('Error', PASSWORD_REQUIREMENTS_TEXT);
       return;
     }
 
@@ -129,21 +135,18 @@ export default function SignUpScreen() {
                     style={styles.input}
                     value={phone}
                     onChangeText={(text) => setPhone(formatPhoneAsTyping(text))}
-                    placeholder="+1 (234) 567-8900"
+                    placeholder="+52 (123) 456-7890"
                     placeholderTextColor={Colors.dark.textLight}
                     keyboardType="phone-pad"
                     autoCorrect={false}
                   />
                   {/* Helper and warning text for phone format */}
                   <Text style={styles.helperText}>
-                    Incluye el código de país, por ejemplo: +1 234 567 8900
-                  </Text>
-                  <Text style={styles.notificationText}>
-                    📱 Este número se usará para enviarte notificaciones sobre tus citas
+                    Incluye el código de país, por ejemplo: +52 123 456 7890
                   </Text>
                   {phone.length > 0 && !isValidPhoneNumber(phone) && (
                     <Text style={styles.warningText}>
-                      Formato inválido. Usa el formato internacional: +1 234 567 8900
+                      Formato inválido. Usa el formato internacional: +52 123 456 7890
                     </Text>
                   )}
                 </View>
@@ -173,6 +176,12 @@ export default function SignUpScreen() {
                     secureTextEntry
                     autoCapitalize="none"
                   />
+                  <Text style={styles.helperText}>{PASSWORD_REQUIREMENTS_TEXT}</Text>
+                  {password.length > 0 && !isPasswordValid(password) && (
+                    <Text style={styles.warningText}>
+                      Tu contraseña aún no cumple con todos los requisitos.
+                    </Text>
+                  )}
                 </View>
 
                 <View style={styles.inputContainer}>

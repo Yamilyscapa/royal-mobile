@@ -3,20 +3,7 @@ export { apiClient, ApiResponse, AuthTokens } from './api';
 
 // Export authentication service
 export { AuthService } from './auth.service';
-export type { 
-  User, 
-  LoginCredentials, 
-  RegisterData, 
-  AuthResponse,
-  RecoveryRequestPayload,
-<<<<<<< ours
-  RecoveryRequestResponse,
-  ResetWithRecoveryCodePayload,
-  RecoveryCodeResponse
-=======
-  ResetWithRecoveryCodePayload
->>>>>>> theirs
-} from './auth.service';
+export type { User, LoginCredentials, RegisterData, AuthResponse } from './auth.service';
 
 // Export appointments service
 export { AppointmentsService } from './appointments.service';

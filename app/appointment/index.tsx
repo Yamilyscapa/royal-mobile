@@ -658,6 +658,14 @@ export default function AppointmentScreen() {
 		}).format(numericPrice);
 	};
 
+	// Format YYYY-MM-DD without timezone shifts
+	const formatSelectedDate = (dateString: string) => {
+		if (!dateString) return '';
+		const [year, month, day] = dateString.split('-');
+		const safeDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+		return safeDate.toLocaleDateString('es-ES');
+	};
+
 	// Always render the main screen, handle loading states within the content
 	return (
 		<ScreenWrapper showBottomFade={true} showTopFade={false} isLoading={isLoading} edges={['top', 'bottom']}>
@@ -1047,7 +1055,7 @@ export default function AppointmentScreen() {
 										} ({paymentType === 'full' ? 'Pago completo' : 'Anticipo 50%'})
 									</ThemeText>
 									<ThemeText style={{ marginBottom: 5 }}>
-										Fecha: {new Date(selectedDate).toLocaleDateString('es-ES')}
+										Fecha: {formatSelectedDate(selectedDate)}
 									</ThemeText>
 									<ThemeText>
 										Hora: {formatTime(selectedTime)}

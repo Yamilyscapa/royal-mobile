@@ -12,6 +12,7 @@ import { Appointment } from '@/services';
 import { apiClient } from '@/services/api';
 import { useAuth } from '@/components/auth/AuthContext';
 import ScreenWrapper from '@/components/ui/ScreenWrapper';
+import { parseAppointmentDate } from '@/helpers/date';
 
 export default function RescheduleScreen() {
     const { appointmentId } = useLocalSearchParams();
@@ -144,7 +145,8 @@ export default function RescheduleScreen() {
 
         const now = new Date();
         const upcomingAppointments = allUserAppointments.filter(apt => {
-            const aptDate = new Date(apt.appointmentDate);
+            const aptDate = parseAppointmentDate(apt.appointmentDate);
+            if (!aptDate) return false;
             return aptDate > now && (apt.status === 'confirmed' || apt.status === 'pending');
         });
 
@@ -152,9 +154,11 @@ export default function RescheduleScreen() {
 
         // Sort by appointment date and time, then return the closest one
         return upcomingAppointments.sort((a, b) => {
-            const dateA = new Date(a.appointmentDate);
-            const dateB = new Date(b.appointmentDate);
-            return dateA.getTime() - dateB.getTime();
+            const dateA = parseAppointmentDate(a.appointmentDate);
+            const dateB = parseAppointmentDate(b.appointmentDate);
+            const timeA = dateA ? dateA.getTime() : 0;
+            const timeB = dateB ? dateB.getTime() : 0;
+            return timeA - timeB;
         })[0];
     };
 
@@ -191,7 +195,10 @@ export default function RescheduleScreen() {
 
     const isWithin30Minutes = () => {
         if (!appointment) return false;
-        const appointmentDateTime = new Date(appointment.appointmentDate);
+        const appointmentDateTime = parseAppointmentDate(appointment.appointmentDate);
+        if (!appointmentDateTime) return false;
+        const [hours, minutes] = appointment.timeSlot.split(':');
+        appointmentDateTime.setHours(parseInt(hours, 10), parseInt(minutes || '0', 10), 0, 0);
         const currentTime = new Date();
         const timeDifferenceMs = appointmentDateTime.getTime() - currentTime.getTime();
         const timeDifferenceMinutes = timeDifferenceMs / (1000 * 60);

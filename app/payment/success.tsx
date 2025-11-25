@@ -11,6 +11,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
+import { NotificationService } from '@/services';
+import { useAuth } from '@/components/auth/AuthContext';
 
 interface PaymentSuccessParams {
 	timeSlot?: string;
@@ -23,6 +25,7 @@ interface PaymentSuccessParams {
 export default function PaymentSuccessScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams() as PaymentSuccessParams;
+	const { user } = useAuth();
 	const [formattedTime, setFormattedTime] = useState<string>('');
 	const [formattedDate, setFormattedDate] = useState<string>('');
 
@@ -53,7 +56,32 @@ export default function PaymentSuccessScreen() {
 			};
 			setFormattedDate(formatDate(params.appointmentDate));
 		}
-	}, [params.timeSlot, params.appointmentDate]);
+
+		// Send notification when payment is successful
+		const sendNotification = async () => {
+			if (user && params.serviceName && params.timeSlot) {
+				try {
+					// Determine if this is a partial payment (you can modify this logic based on your payment system)
+					const isPartialPayment = false; // Set to true if you have partial payment logic
+					const remainingAmount = 0; // Calculate remaining amount if needed
+
+					await NotificationService.sendAppointmentConfirmation({
+						username: user.name || user.firstName || 'Cliente',
+						service: params.serviceName,
+						time: params.timeSlot,
+						isPartialPayment,
+						remainingAmount,
+					});
+				} catch (error) {
+					console.error('Error sending notification:', error);
+				}
+			}
+		};
+
+		// Send notification after a short delay to ensure the screen is loaded
+		const notificationTimer = setTimeout(sendNotification, 1000);
+		return () => clearTimeout(notificationTimer);
+	}, [params.timeSlot, params.appointmentDate, params.serviceName, user]);
 
 	const handleGoHome = () => {
 		router.replace('/(tabs)');

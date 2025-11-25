@@ -14,6 +14,7 @@ import ScreenWrapper from '@/components/ui/ScreenWrapper';
 import Colors from '@/constants/Colors';
 import { useAuth } from '@/components/auth/AuthContext';
 import { AppointmentsService, Appointment } from '@/services';
+import { parseAppointmentDate } from '@/helpers/date';
 
 export default function HomeScreen() {
 	const { user, clearStorage, isLoading: authLoading } = useAuth();
@@ -87,9 +88,11 @@ export default function HomeScreen() {
 						if (!['confirmed', 'pending'].includes(appointment.status)) return false;
 
 						// Combine appointment date and time for accurate comparison
-						const appointmentDate = new Date(appointment.appointmentDate);
+						const appointmentDate = parseAppointmentDate(appointment.appointmentDate);
+						if (!appointmentDate) return false;
+
 						const [hours, minutes] = appointment.timeSlot.split(':');
-						appointmentDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+						appointmentDate.setHours(parseInt(hours, 10), parseInt(minutes || '0', 10), 0, 0);
 
 						const now = new Date();
 
@@ -102,7 +105,13 @@ export default function HomeScreen() {
 						const isFuture = appointmentDate > now || appointmentDateOnly.getTime() === today.getTime();
 						return isFuture;
 					})
-					.sort((a, b) => new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime());
+					.sort((a, b) => {
+						const dateA = parseAppointmentDate(a.appointmentDate);
+						const dateB = parseAppointmentDate(b.appointmentDate);
+						const timeA = dateA ? dateA.getTime() : 0;
+						const timeB = dateB ? dateB.getTime() : 0;
+						return timeA - timeB;
+					});
 
 				// Get the next upcoming appointment
 				if (upcomingAppointments.length > 0) {
@@ -126,6 +135,7 @@ export default function HomeScreen() {
 		await fetchUpcomingAppointment();
 		setRefreshing(false);
 	}, []);
+
 
 	const formatTime = (timeSlot: string) => {
 		const [hours, minutes] = timeSlot.split(':');
@@ -366,6 +376,7 @@ export default function HomeScreen() {
 						</ThemeText>
 					</Link>
 
+
 					{/* Admin Panel link - only visible for admin/staff users */}
 					{user && (user.isAdmin === true || user.role === 'staff') && (
 						<Link
@@ -390,6 +401,7 @@ export default function HomeScreen() {
 							</ThemeText>
 						</Link>
 					)}
+
 				</View>
 			</ScrollView>
 		</ScreenWrapper>

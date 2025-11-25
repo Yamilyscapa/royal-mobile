@@ -88,21 +88,40 @@ const AdminPanel = () => {
   const [userSearchEmail, setUserSearchEmail] = useState<string>('');
   const [searchedUser, setSearchedUser] = useState<any>(null);
   const [isSearchingUser, setIsSearchingUser] = useState(false);
+  const hasAdminView = Boolean(user?.isAdmin || user?.role === 'staff');
+
+  // Helper to parse API dates in either ISO or DD/MM/YYYY formats
+  const parseAppointmentDate = (dateStr: string): Date | null => {
+    if (!dateStr) return null;
+    
+    if (dateStr.includes('/')) {
+      const [day, month, year] = dateStr.split('/');
+      const parsed = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+    
+    const parsed = new Date(dateStr);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
 
   // Helper function to get date range based on loading range
   const getDateRange = (range: 'week' | 'month' | 'all') => {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(todayStart);
+    todayEnd.setHours(23, 59, 59, 999);
     
     switch (range) {
-      case 'week':
-        const weekAgo = new Date(today);
-        weekAgo.setDate(today.getDate() - 7);
-        return { startDate: weekAgo.toISOString().split('T')[0], endDate: null };
-      case 'month':
-        const monthAgo = new Date(today);
-        monthAgo.setMonth(today.getMonth() - 1);
-        return { startDate: monthAgo.toISOString().split('T')[0], endDate: null };
+      case 'week': {
+        const weekAgo = new Date(todayStart);
+        weekAgo.setDate(todayStart.getDate() - 7);
+        return { startDate: weekAgo, endDate: todayEnd };
+      }
+      case 'month': {
+        const monthAgo = new Date(todayStart);
+        monthAgo.setMonth(todayStart.getMonth() - 1);
+        return { startDate: monthAgo, endDate: todayEnd };
+      }
       case 'all':
         return { startDate: null, endDate: null };
     }
@@ -110,94 +129,55 @@ const AdminPanel = () => {
 
   // Optimized appointment loading function
   const loadAppointmentsByRange = async (range: 'week' | 'month' | 'all') => {
-    if (!user?.isAdmin) return;
+    if (!hasAdminView) return;
     
     setIsLoadingAppointments(true);
     setAppointmentsLoaded(0);
     setTotalAppointments(0);
     
     try {
-      const { startDate } = getDateRange(range);
-      
-      if (range === 'week' || range === 'month') {
-        // For week/month, get all appointments and filter by date and status
-        const res = await AdminService.getAllAppointments();
-        if (res && res.success && res.data && Array.isArray(res.data)) {
-          let allAppointments = res.data;
+      const { startDate, endDate } = getDateRange(range);
+      const res = await AdminService.getAllAppointments();
+
+      if (res && res.success && res.data && Array.isArray(res.data)) {
+        const filteredByRange = res.data.filter(apt => {
+          if (!startDate && !endDate) return true;
           
-          // Filter by status - only show active appointments for week/month
-          allAppointments = allAppointments.filter(apt => 
-            apt.status === 'pending' || apt.status === 'confirmed'
-          );
+          const aptDate = parseAppointmentDate(apt.appointmentDate);
+          if (!aptDate) return true; // fail-safe: keep appointment if date can't be parsed
           
-          // Filter by date if startDate is provided
-          if (startDate) {
-            const filterDate = new Date(startDate);
-            allAppointments = allAppointments.filter(apt => {
-              const aptDate = new Date(apt.appointmentDate);
-              return aptDate >= filterDate;
-            });
+          if (startDate && aptDate < startDate) return false;
+          if (endDate && aptDate > endDate) return false;
+          return true;
+        });
+        
+        // Sort appointments from closest to furthest (chronologically)
+        const sortedAppointments = filteredByRange.sort((a, b) => {
+          const dateA = parseAppointmentDate(a.appointmentDate) || new Date(0);
+          const dateB = parseAppointmentDate(b.appointmentDate) || new Date(0);
+          const now = new Date();
+          
+          // If dates are the same, sort by time
+          if (dateA.getTime() === dateB.getTime()) {
+            return a.timeSlot.localeCompare(b.timeSlot);
           }
           
-          // Sort appointments from closest to furthest (chronologically)
-          allAppointments.sort((a, b) => {
-            const dateA = new Date(a.appointmentDate);
-            const dateB = new Date(b.appointmentDate);
-            const now = new Date();
-            
-            // If dates are the same, sort by time
-            if (dateA.getTime() === dateB.getTime()) {
-              return a.timeSlot.localeCompare(b.timeSlot);
-            }
-            
-            // Sort by absolute distance from current date (closest first)
-            const distanceA = Math.abs(dateA.getTime() - now.getTime());
-            const distanceB = Math.abs(dateB.getTime() - now.getTime());
-            
-            return distanceA - distanceB;
-          });
+          // Sort by absolute distance from current date (closest first)
+          const distanceA = Math.abs(dateA.getTime() - now.getTime());
+          const distanceB = Math.abs(dateB.getTime() - now.getTime());
           
-          setAppointmentsSafe(allAppointments);
-          setTotalAppointments(allAppointments.length);
-          setAppointmentsLoaded(allAppointments.length);
-          
-          console.log(`Loaded ${allAppointments.length} appointments for ${range} range`);
-        } else {
-          setAppointmentsSafe([]);
-          setTotalAppointments(0);
-          console.log('Failed to load appointments for range:', res?.error);
-        }
+          return distanceA - distanceB;
+        });
+        
+        setAppointmentsSafe(sortedAppointments);
+        setTotalAppointments(sortedAppointments.length);
+        setAppointmentsLoaded(sortedAppointments.length);
+        
+        console.log(`Loaded ${sortedAppointments.length} appointments for ${range} range`);
       } else {
-        // For 'all', use the getAllAppointments endpoint which should work
-        const res = await AdminService.getAllAppointments();
-        if (res && res.success && res.data && Array.isArray(res.data)) {
-          // Sort appointments from closest to furthest (chronologically)
-          const sortedAppointments = res.data.sort((a, b) => {
-            const dateA = new Date(a.appointmentDate);
-            const dateB = new Date(b.appointmentDate);
-            const now = new Date();
-            
-            // If dates are the same, sort by time
-            if (dateA.getTime() === dateB.getTime()) {
-              return a.timeSlot.localeCompare(b.timeSlot);
-            }
-            
-            // Sort by absolute distance from current date (closest first)
-            const distanceA = Math.abs(dateA.getTime() - now.getTime());
-            const distanceB = Math.abs(dateB.getTime() - now.getTime());
-            
-            return distanceA - distanceB;
-          });
-          
-          setAppointmentsSafe(sortedAppointments);
-          setTotalAppointments(sortedAppointments.length);
-          setAppointmentsLoaded(sortedAppointments.length);
-          console.log(`Loaded ${sortedAppointments.length} appointments (all time, all statuses)`);
-        } else {
-          setAppointmentsSafe([]);
-          setTotalAppointments(0);
-          console.log('Failed to load all appointments:', res?.error);
-        }
+        setAppointmentsSafe([]);
+        setTotalAppointments(0);
+        console.log('Failed to load appointments for range:', res?.error);
       }
     } catch (error) {
       console.error('Error loading appointments by range:', error);
@@ -329,8 +309,8 @@ const AdminPanel = () => {
       });
     }
 
-    // Filter by barber (for admin users)
-    if (barberFilter && user?.isAdmin) {
+    // Filter by barber (for admin/staff users)
+    if (barberFilter && hasAdminView) {
       filtered = filtered.filter(apt => {
         const a = apt as any;
         const barberFullName = `${a.barberName || ''} ${a.barberLastName || ''}`.trim().toLowerCase();
@@ -431,27 +411,11 @@ const AdminPanel = () => {
     
     // Appointments
     if (activeTab === 'appointments') {
-      console.log('fetchAllData: Loading appointments for user:', user.isAdmin ? 'admin' : user.role);
+      console.log('fetchAllData: Loading appointments for user:', hasAdminView ? 'admin_or_staff' : user.role);
       try {
-        if (user.isAdmin) {
+        if (hasAdminView) {
           // Use optimized loading by range
           await loadAppointmentsByRange(loadingRange);
-        } else if (user.role === 'staff') {
-          // Staff sees only their own appointments
-          const res = await AppointmentsService.getBarberAppointments(user.id);
-          console.log('Fetched barber appointments for staff:', res);
-          if (res && res.success && res.data && Array.isArray(res.data)) {
-            // Show all appointments when loadingRange is 'all', otherwise exclude completed
-            const filteredAppointments = loadingRange === 'all' 
-              ? res.data 
-              : res.data.filter((apt: any) => apt.status !== 'completed');
-            console.log(`Staff appointments (${loadingRange === 'all' ? 'including all statuses' : 'excluding completed'}):`, filteredAppointments.length);
-            setAppointmentsSafe(filteredAppointments);
-          } else {
-            console.log('No staff appointments data');
-            console.log('Response structure:', { success: res?.success, hasData: !!res?.data, isArray: Array.isArray(res?.data) });
-            setAppointmentsSafe([]);
-          }
         } else {
           // Regular users see only their own appointments
           const res = await AppointmentsService.getUserAppointments();
@@ -545,6 +509,17 @@ const AdminPanel = () => {
     const monthName = monthNames[date.getMonth()];
     
     return `${dayName} ${day} de ${monthName}`;
+  };
+
+  const formatTime = (time: string) => {
+    if (!time) return '';
+    const [hourStr, minuteStr = '00'] = time.split(':');
+    const hours = parseInt(hourStr, 10);
+    if (Number.isNaN(hours)) return time;
+    const minutes = minuteStr.slice(0, 2).padEnd(2, '0');
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHour = hours % 12 || 12;
+    return `${displayHour}:${minutes} ${period}`;
   };
 
   const formatDateToDDMMYYYY = (isoDate: string) => {
@@ -942,7 +917,7 @@ const AdminPanel = () => {
                 </View>
               </View>
 
-              {user?.isAdmin && (
+              {hasAdminView && (
                 <View style={styles.filterSection}>
                   <ThemeText style={styles.filterSectionTitle}>👨‍💼 Buscar por Barbero</ThemeText>
                   <View style={styles.barberFilterContainer}>
@@ -1052,15 +1027,17 @@ const AdminPanel = () => {
                     </View>
                   </View>
                   <ThemeText style={styles.cardPrice}>{a.serviceName || appointment.service?.name || appointment.serviceId}</ThemeText>
-                  <ThemeText style={styles.cardDescription}>{formatDate(appointment.appointmentDate)} - {appointment.timeSlot}</ThemeText>
+                  <ThemeText style={styles.cardDescription}>{formatDate(appointment.appointmentDate)} - {formatTime(appointment.timeSlot)}</ThemeText>
                   <ThemeText style={styles.cardDescription}>{a.customerEmail || appointment.user?.email || ''}</ThemeText>
                   
                   {/* Payment Information */}
-                  {a.paymentAmount && (
+                  {(a.paymentAmount || a.paymentType) && (
                     <View style={styles.paymentContainer}>
                       <ThemeText style={styles.paymentLabel}>💰 PAGO:</ThemeText>
                       <ThemeText style={styles.paymentAmount}>
-                        ${formatPaymentAmount(a.paymentAmount)}
+                        {a.paymentAmount
+                          ? `$${formatPaymentAmount(a.paymentAmount)}`
+                          : 'Monto no disponible'}
                       </ThemeText>
                       {a.paymentType && (
                         <View style={[
@@ -1074,7 +1051,7 @@ const AdminPanel = () => {
                       )}
                     </View>
                   )}
-                  {user?.isAdmin && a.barberName && (
+                  {hasAdminView && a.barberName && (
                     <View style={styles.barberContainer}>
                       <ThemeText style={styles.barberLabel}>👨‍💼 BARBERO:</ThemeText>
                       <ThemeText style={styles.barberName}>

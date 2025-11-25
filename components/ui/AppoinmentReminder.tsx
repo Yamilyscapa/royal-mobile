@@ -272,7 +272,8 @@ const styles = StyleSheet.create({
 	},
 	datetimeRow: {
 		flexDirection: 'row',
-		alignItems: 'center',
+		alignItems: 'flex-start',
+		flexWrap: 'wrap',
 	},
 	datetimeIcon: {
 		width: 40,
@@ -287,6 +288,9 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		color: Colors.dark.text,
 		fontWeight: '600',
+		flex: 1,
+		flexWrap: 'wrap',
+		flexShrink: 1,
 	},
 
 });

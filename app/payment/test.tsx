@@ -8,9 +8,12 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '@/constants/Colors';
+import { NotificationService } from '@/services';
+import { useAuth } from '@/components/auth/AuthContext';
 
 export default function PaymentTestScreen() {
 	const router = useRouter();
+	const { user } = useAuth();
 
 	const testSuccessScreen = () => {
 		router.push({
@@ -39,6 +42,42 @@ export default function PaymentTestScreen() {
 		});
 	};
 
+	const testNotification = async () => {
+		try {
+			await NotificationService.sendTestNotification();
+		} catch (error) {
+			console.error('Error sending test notification:', error);
+		}
+	};
+
+	const testAppointmentNotification = async () => {
+		try {
+			await NotificationService.sendAppointmentConfirmation({
+				username: user?.name || user?.firstName || 'Cliente',
+				service: 'Corte Clásico',
+				time: '14:30',
+				isPartialPayment: false,
+				remainingAmount: 0,
+			});
+		} catch (error) {
+			console.error('Error sending appointment notification:', error);
+		}
+	};
+
+	const testPartialPaymentNotification = async () => {
+		try {
+			await NotificationService.sendAppointmentConfirmation({
+				username: user?.name || user?.firstName || 'Cliente',
+				service: 'Corte Premium',
+				time: '16:00',
+				isPartialPayment: true,
+				remainingAmount: 150.00,
+			});
+		} catch (error) {
+			console.error('Error sending partial payment notification:', error);
+		}
+	};
+
 	const goBack = () => {
 		router.back();
 	};
@@ -46,9 +85,9 @@ export default function PaymentTestScreen() {
 	return (
 		<SafeAreaView style={styles.container}>
 			<View style={styles.content}>
-				<Text style={styles.title}>Payment Screens Test</Text>
+				<Text style={styles.title}>Payment & Notification Test</Text>
 				<Text style={styles.subtitle}>
-					Test the payment success and failure screens
+					Test payment screens and notification functionality
 				</Text>
 
 				<View style={styles.buttonContainer}>
@@ -58,6 +97,18 @@ export default function PaymentTestScreen() {
 
 					<TouchableOpacity style={styles.failedButton} onPress={testFailedScreen}>
 						<Text style={styles.buttonText}>Test Failed Screen</Text>
+					</TouchableOpacity>
+
+					<TouchableOpacity style={styles.notificationButton} onPress={testNotification}>
+						<Text style={styles.buttonText}>Test Basic Notification</Text>
+					</TouchableOpacity>
+
+					<TouchableOpacity style={styles.notificationButton} onPress={testAppointmentNotification}>
+						<Text style={styles.buttonText}>Test Appointment Notification</Text>
+					</TouchableOpacity>
+
+					<TouchableOpacity style={styles.notificationButton} onPress={testPartialPaymentNotification}>
+						<Text style={styles.buttonText}>Test Partial Payment Notification</Text>
 					</TouchableOpacity>
 
 					<TouchableOpacity style={styles.backButton} onPress={goBack}>
@@ -107,6 +158,13 @@ const styles = StyleSheet.create({
 	},
 	failedButton: {
 		backgroundColor: Colors.dark.error,
+		paddingVertical: 16,
+		paddingHorizontal: 24,
+		borderRadius: 12,
+		alignItems: 'center',
+	},
+	notificationButton: {
+		backgroundColor: Colors.dark.primary,
 		paddingVertical: 16,
 		paddingHorizontal: 24,
 		borderRadius: 12,

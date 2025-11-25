@@ -45,6 +45,9 @@ export const API_ENDPOINTS = {
     refresh: '/auth/refresh',
     logout: '/auth/logout',
     deleteAccount: '/auth/delete-account',
+    requestPasswordReset: '/auth/request-password-reset',
+    verifyResetToken: '/auth/verify-reset-token',
+    resetPassword: '/auth/reset-password',
   },
   
   // Users

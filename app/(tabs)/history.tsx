@@ -17,6 +17,7 @@ import Colors from '@/constants/Colors';
 import { AppointmentsService, Appointment } from '@/services';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/components/auth/AuthContext';
+import { parseAppointmentDate } from '@/helpers/date';
 
 export default function HistoryScreen() {
 	const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -59,15 +60,18 @@ export default function HistoryScreen() {
 
 		const now = new Date();
 		const upcomingAppointments = appointments.filter(apt => {
-			const aptDate = new Date(apt.appointmentDate);
+			const aptDate = parseAppointmentDate(apt.appointmentDate);
+			if (!aptDate) return false;
 			return aptDate > now && (apt.status === 'confirmed' || apt.status === 'pending');
 		});
 
 		// Sort upcoming appointments from nearest to furthest (ascending order)
 		return upcomingAppointments.sort((a, b) => {
-			const dateA = new Date(a.appointmentDate);
-			const dateB = new Date(b.appointmentDate);
-			return dateA.getTime() - dateB.getTime();
+			const dateA = parseAppointmentDate(a.appointmentDate);
+			const dateB = parseAppointmentDate(b.appointmentDate);
+			const timeA = dateA ? dateA.getTime() : 0;
+			const timeB = dateB ? dateB.getTime() : 0;
+			return timeA - timeB;
 		});
 	};
 
@@ -79,15 +83,18 @@ export default function HistoryScreen() {
 
 		const now = new Date();
 		const pastAppointments = appointments.filter(apt => {
-			const aptDate = new Date(apt.appointmentDate);
+			const aptDate = parseAppointmentDate(apt.appointmentDate);
+			if (!aptDate) return true; // Treat unparseable dates as past to avoid showing in upcoming
 			return aptDate <= now || (apt.status === 'completed' || apt.status === 'cancelled' || apt.status === 'no-show');
 		});
 
 		// Sort past appointments from most recent to oldest (descending order)
 		return pastAppointments.sort((a, b) => {
-			const dateA = new Date(a.appointmentDate);
-			const dateB = new Date(b.appointmentDate);
-			return dateB.getTime() - dateA.getTime();
+			const dateA = parseAppointmentDate(a.appointmentDate);
+			const dateB = parseAppointmentDate(b.appointmentDate);
+			const timeA = dateA ? dateA.getTime() : 0;
+			const timeB = dateB ? dateB.getTime() : 0;
+			return timeB - timeA;
 		});
 	};
 

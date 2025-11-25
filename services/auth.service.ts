@@ -28,19 +28,17 @@ export interface RegisterData {
   role: 'customer' | 'staff' | 'admin';
 }
 
-export interface RecoveryRequestPayload {
-  emailOrPhone: string;
+export interface RequestPasswordResetRequest {
+  email: string;
 }
 
-export interface ResetWithRecoveryCodePayload {
-  emailOrPhone: string;
-  code: string;
+export interface VerifyResetTokenRequest {
+  token: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
   newPassword: string;
-}
-
-export interface RecoveryCodeResponse {
-  code: string;
-  message?: string;
 }
 
 export interface AuthResponse {
@@ -180,46 +178,44 @@ export class AuthService {
     }
   }
 
-  // Request password recovery via recovery code
-  static async requestRecovery(payload: RecoveryRequestPayload): Promise<ApiResponse<{ message?: string }>> {
+  // Password Recovery Methods
+
+  // Request password reset
+  static async requestPasswordReset(email: string): Promise<ApiResponse<void>> {
     try {
-      return await apiClient.post<{ message?: string }>('/auth/recovery/request', payload, false);
+      const data: RequestPasswordResetRequest = { email };
+      // The API always returns success (200) even if the email doesn't exist
+      return await apiClient.post<void>('/auth/request-password-reset', data, false);
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Recovery request failed',
+        error: error instanceof Error ? error.message : 'Failed to request password reset',
       };
     }
   }
 
-  // Reset password using recovery code
-  static async resetWithRecoveryCode(
-    payload: ResetWithRecoveryCodePayload
-  ): Promise<ApiResponse<AuthResponse>> {
+  // Verify reset token
+  static async verifyResetToken(token: string): Promise<ApiResponse<{ valid: boolean }>> {
     try {
-      const response = await apiClient.post<AuthResponse>('/auth/recovery/verify', payload, false);
-
-      if (response.success && response.data) {
-        await apiClient.setTokens(response.data.accessToken, response.data.refreshToken);
-      }
-
-      return response;
+      const data: VerifyResetTokenRequest = { token };
+      return await apiClient.post<{ valid: boolean }>('/auth/verify-reset-token', data, false);
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Recovery verification failed',
+        error: error instanceof Error ? error.message : 'Failed to verify token',
       };
     }
   }
 
-  // Generate or retrieve a recovery code for the authenticated user
-  static async generateRecoveryCode(): Promise<ApiResponse<RecoveryCodeResponse>> {
+  // Reset password
+  static async resetPassword(token: string, newPassword: string): Promise<ApiResponse<void>> {
     try {
-      return await apiClient.post<RecoveryCodeResponse>('/auth/recovery/code');
+      const data: ResetPasswordRequest = { token, newPassword };
+      return await apiClient.post<void>('/auth/reset-password', data, false);
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to generate recovery code',
+        error: error instanceof Error ? error.message : 'Failed to reset password',
       };
     }
   }
