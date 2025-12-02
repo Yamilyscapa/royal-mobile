@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -10,7 +10,9 @@ import {
   Modal,
   TextInput,
   Pressable,
+  Platform,
 } from 'react-native';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'react-native';
@@ -33,7 +35,28 @@ import {
   formatAppointmentTime,
   formatDateForBackend,
   parseAppointmentDate,
+  parseAppointmentDateTime,
 } from '@/helpers/date';
+
+// Configure Spanish locale for Calendar
+LocaleConfig.locales['es'] = {
+  monthNames: [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ],
+  monthNamesShort: [
+    'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+  ],
+  dayNames: [
+    'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
+  ],
+  dayNamesShort: [
+    'Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'
+  ],
+  today: 'Hoy'
+};
+LocaleConfig.defaultLocale = 'es';
 
 interface DaySchedule {
   day: string;
@@ -58,8 +81,6 @@ const AdminPanel = () => {
     }
   };
 
-  // Dynamic loading states
-  const [loadingRange, setLoadingRange] = useState<'week' | 'month' | 'all'>('week');
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [services, setServices] = useState<ApiService[]>([]);
   const [schedules, setSchedules] = useState<BarberSchedule[]>([]);
@@ -91,9 +112,14 @@ const AdminPanel = () => {
   const [dateFilter, setDateFilter] = useState<string>('');
   const [barberFilter, setBarberFilter] = useState<string>('');
   const [filteredAppointments, setFilteredAppointments] = useState<ApiAppointment[]>([]);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [userSearchEmail, setUserSearchEmail] = useState<string>('');
   const [searchedUser, setSearchedUser] = useState<any>(null);
   const [isSearchingUser, setIsSearchingUser] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'proximas' | 'este-mes' | 'historial'>('proximas');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const hasAdminView = Boolean(user?.isAdmin || user?.role === 'staff');
   const isStaffOnlyView = Boolean(!user?.isAdmin && user?.role === 'staff');
   
@@ -104,31 +130,8 @@ const AdminPanel = () => {
     return appointmentsList;
   };
 
-  // Helper function to get date range based on loading range
-  const getDateRange = (range: 'week' | 'month' | 'all') => {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart);
-    todayEnd.setHours(23, 59, 59, 999);
-    
-    switch (range) {
-      case 'week': {
-        const weekAgo = new Date(todayStart);
-        weekAgo.setDate(todayStart.getDate() - 7);
-        return { startDate: weekAgo, endDate: todayEnd };
-      }
-      case 'month': {
-        const monthAgo = new Date(todayStart);
-        monthAgo.setMonth(todayStart.getMonth() - 1);
-        return { startDate: monthAgo, endDate: todayEnd };
-      }
-      case 'all':
-        return { startDate: null, endDate: null };
-    }
-  };
-
   // Optimized appointment loading function
-  const loadAppointmentsByRange = async (range: 'week' | 'month' | 'all') => {
+  const loadAppointments = async () => {
     if (!hasAdminView) return;
     
     setIsLoadingAppointments(true);
@@ -136,53 +139,24 @@ const AdminPanel = () => {
     setTotalAppointments(0);
     
     try {
-      const { startDate, endDate } = getDateRange(range);
+      // Always fetch all appointments and filter in memory
       const res = await AdminService.getAllAppointments();
 
       if (res && res.success && res.data && Array.isArray(res.data)) {
-        const filteredByRange = res.data.filter(apt => {
-          if (!startDate && !endDate) return true;
-          
-          const aptDate = parseAppointmentDate(apt.appointmentDate);
-          if (!aptDate) return true; // fail-safe: keep appointment if date can't be parsed
-          
-          if (startDate && aptDate < startDate) return false;
-          if (endDate && aptDate > endDate) return false;
-          return true;
-        });
+        const viewerFilteredAppointments = filterAppointmentsForViewer(res.data);
         
-        const viewerFilteredAppointments = filterAppointmentsForViewer(filteredByRange);
+        setAppointmentsSafe(viewerFilteredAppointments);
+        setTotalAppointments(viewerFilteredAppointments.length);
+        setAppointmentsLoaded(viewerFilteredAppointments.length);
         
-        // Sort appointments from closest to furthest (chronologically)
-        const sortedAppointments = viewerFilteredAppointments.sort((a, b) => {
-          const dateA = parseAppointmentDate(a.appointmentDate) || new Date(0);
-          const dateB = parseAppointmentDate(b.appointmentDate) || new Date(0);
-          const now = new Date();
-          
-          // If dates are the same, sort by time
-          if (dateA.getTime() === dateB.getTime()) {
-            return a.timeSlot.localeCompare(b.timeSlot);
-          }
-          
-          // Sort by absolute distance from current date (closest first)
-          const distanceA = Math.abs(dateA.getTime() - now.getTime());
-          const distanceB = Math.abs(dateB.getTime() - now.getTime());
-          
-          return distanceA - distanceB;
-        });
-        
-        setAppointmentsSafe(sortedAppointments);
-        setTotalAppointments(sortedAppointments.length);
-        setAppointmentsLoaded(sortedAppointments.length);
-        
-        console.log(`Loaded ${sortedAppointments.length} appointments for ${range} range`);
+        console.log(`Loaded ${viewerFilteredAppointments.length} appointments`);
       } else {
         setAppointmentsSafe([]);
         setTotalAppointments(0);
-        console.log('Failed to load appointments for range:', res?.error);
+        console.log('Failed to load appointments:', res?.error);
       }
     } catch (error) {
-      console.error('Error loading appointments by range:', error);
+      console.error('Error loading appointments:', error);
       setAppointmentsSafe([]);
       setTotalAppointments(0);
     } finally {
@@ -270,6 +244,11 @@ const AdminPanel = () => {
     }
   }, [schedules]);
 
+  const getAppointmentTimestamp = (apt: ApiAppointment) => {
+    const dateTime = parseAppointmentDateTime(apt.appointmentDate, apt.timeSlot || '00:00');
+    return dateTime ? dateTime.getTime() : 0;
+  };
+
   const applyFilters = () => {
     // Only apply filters if component is mounted
     if (!isMounted) {
@@ -280,13 +259,47 @@ const AdminPanel = () => {
     // Ensure appointments is an array before filtering
     if (!appointments || !Array.isArray(appointments)) {
       console.log('applyFilters: appointments is not an array, setting empty filtered appointments');
-      console.log('appointments type:', typeof appointments);
-      console.log('appointments value:', appointments);
       setFilteredAppointments([]);
       return;
     }
 
     let filtered = appointments;
+
+    // Filter by View Mode
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (viewMode === 'proximas') {
+      filtered = filtered.filter(apt => {
+        const aptDate = parseAppointmentDate(apt.appointmentDate);
+        if (!aptDate) return false;
+        
+        // Check if date is today or future
+        const isUpcoming = aptDate >= todayStart;
+        
+        // Check if status is valid (not completed or cancelled)
+        const isValidStatus = !['completed', 'cancelled', 'no-show'].includes(apt.status);
+        
+        return isUpcoming && isValidStatus;
+      });
+    } else if (viewMode === 'este-mes') {
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      
+      filtered = filtered.filter(apt => {
+        const aptDate = parseAppointmentDate(apt.appointmentDate);
+        if (!aptDate) return false;
+        
+        return aptDate.getMonth() === currentMonth && aptDate.getFullYear() === currentYear;
+      });
+    } else if (viewMode === 'historial') {
+      filtered = filtered.filter(apt => {
+        const aptDate = parseAppointmentDate(apt.appointmentDate);
+        if (!aptDate) return false;
+        
+        return aptDate.getMonth() === selectedMonth && aptDate.getFullYear() === selectedYear;
+      });
+    }
 
     // Filter by status
     if (statusFilter !== 'all') {
@@ -319,23 +332,13 @@ const AdminPanel = () => {
       });
     }
 
-    // Sort appointments from closest to furthest (chronologically)
-    const sortedFiltered = filtered.sort((a, b) => {
-      const dateA = parseAppointmentDate(a.appointmentDate) || new Date(0);
-      const dateB = parseAppointmentDate(b.appointmentDate) || new Date(0);
-      const now = new Date();
-      
-      // If dates are the same, sort by time
-      if (dateA.getTime() === dateB.getTime()) {
-        return a.timeSlot.localeCompare(b.timeSlot);
-      }
-      
-      // Sort by absolute distance from current date (closest first)
-      const distanceA = Math.abs(dateA.getTime() - now.getTime());
-      const distanceB = Math.abs(dateB.getTime() - now.getTime());
-      
-      return distanceA - distanceB;
-    });
+    const sortedFiltered = filtered
+      .slice()
+      .sort((a, b) => {
+        const tsA = getAppointmentTimestamp(a);
+        const tsB = getAppointmentTimestamp(b);
+        return sortOrder === 'asc' ? tsA - tsB : tsB - tsA;
+      });
     
     setFilteredAppointments(sortedFiltered);
   };
@@ -349,16 +352,49 @@ const AdminPanel = () => {
       isArray: Array.isArray(appointments),
       statusFilter,
       dateFilter,
-      barberFilter
+      barberFilter,
+      sortOrder,
+      viewMode,
+      selectedMonth,
+      selectedYear
     });
     
-    // Add a small delay to ensure appointments are properly set
     const timeoutId = setTimeout(() => {
       applyFilters();
     }, 100);
     
     return () => clearTimeout(timeoutId);
-  }, [appointments, statusFilter, dateFilter, barberFilter, isMounted]);
+  }, [appointments, statusFilter, dateFilter, barberFilter, sortOrder, viewMode, selectedMonth, selectedYear, isMounted]);
+
+  // Calculate counts for tabs
+  const viewCounts = useMemo(() => {
+    if (!appointments || !Array.isArray(appointments)) return { proximas: 0, esteMes: 0 };
+    
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    let proximas = 0;
+    let esteMes = 0;
+    
+    appointments.forEach(apt => {
+      const aptDate = parseAppointmentDate(apt.appointmentDate);
+      if (!aptDate) return;
+      
+      // Proximas logic
+      const isUpcoming = aptDate >= todayStart;
+      const isValidStatus = !['completed', 'cancelled', 'no-show'].includes(apt.status);
+      if (isUpcoming && isValidStatus) proximas++;
+      
+      // Este Mes logic
+      if (aptDate.getMonth() === currentMonth && aptDate.getFullYear() === currentYear) {
+        esteMes++;
+      }
+    });
+    
+    return { proximas, esteMes };
+  }, [appointments]);
 
   const searchUserByEmail = async () => {
     if (!userSearchEmail.trim()) {
@@ -415,8 +451,8 @@ const AdminPanel = () => {
       console.log('fetchAllData: Loading appointments for user:', hasAdminView ? 'admin_or_staff' : user.role);
       try {
         if (hasAdminView) {
-          // Use optimized loading by range
-          await loadAppointmentsByRange(loadingRange);
+          // Use optimized loading (loads all for client-side filtering)
+          await loadAppointments();
         } else {
           // Regular users see only their own appointments
           const res = await AppointmentsService.getUserAppointments();
@@ -820,10 +856,10 @@ const AdminPanel = () => {
             <View style={styles.headerRight}>
               <TouchableOpacity 
                 style={styles.filterToggleButton}
-                onPress={() => setShowFilters(!showFilters)}
+                onPress={() => setShowFilterModal(true)}
               >
                 <ThemeText style={styles.filterToggleText}>
-                  🔍 {showFilters ? 'Ocultar' : 'Filtros'}
+                  🔍 Filtros
                 </ThemeText>
               </TouchableOpacity>
               <ThemeText style={styles.appointmentCount}>
@@ -832,134 +868,98 @@ const AdminPanel = () => {
             </View>
           </View>
 
-          {/* Enhanced Filters Section */}
-          {showFilters && (
-            <View style={styles.filtersCard}>
-              <View style={styles.filterSection}>
-                <ThemeText style={styles.filterSectionTitle}>📊 Estado de la Cita</ThemeText>
-                <View style={styles.statusFilterContainer}>
-                  {[
-                    { key: 'all', label: 'Todas', color: '#6c757d' },
-                    { key: 'pending', label: 'Pendientes', color: '#ffc107' },
-                    { key: 'confirmed', label: 'Confirmadas', color: '#28a745' },
-                    { key: 'cancelled', label: 'Canceladas', color: '#dc3545' },
-                    { key: 'completed', label: 'Completadas', color: '#2ecc40' }
-                  ].map(status => (
-                    <TouchableOpacity
-                      key={status.key}
-                      style={[
-                        styles.statusFilterButton,
-                        statusFilter === status.key && styles.statusFilterButtonActive,
-                        { borderColor: status.color }
-                      ]}
-                      onPress={() => setStatusFilter(status.key)}
-                    >
-                      <ThemeText style={{
-                        ...styles.statusFilterText,
-                        ...(statusFilter === status.key ? styles.statusFilterTextActive : {})
-                      }}>
-                        {status.label}
+          {/* View Mode Tabs */}
+          <View style={styles.viewModeContainer}>
+            <TouchableOpacity 
+              style={[styles.viewModeTab, viewMode === 'proximas' && styles.viewModeTabActive]} 
+              onPress={() => setViewMode('proximas')}
+            >
+              <ThemeText style={[styles.viewModeText, viewMode === 'proximas' && styles.viewModeTextActive]}>
+                Próximas ({viewCounts.proximas})
+              </ThemeText>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.viewModeTab, viewMode === 'este-mes' && styles.viewModeTabActive]} 
+              onPress={() => setViewMode('este-mes')}
+            >
+              <ThemeText style={[styles.viewModeText, viewMode === 'este-mes' && styles.viewModeTextActive]}>
+                Este Mes ({viewCounts.esteMes})
+              </ThemeText>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.viewModeTab, viewMode === 'historial' && styles.viewModeTabActive]} 
+              onPress={() => setViewMode('historial')}
+            >
+              <ThemeText style={[styles.viewModeText, viewMode === 'historial' && styles.viewModeTextActive]}>Historial</ThemeText>
+            </TouchableOpacity>
+          </View>
+
+          {viewMode === 'historial' && (
+            <View style={styles.monthPickerContainer}>
+              <TouchableOpacity 
+                style={styles.monthNavButton} 
+                onPress={() => {
+                  if (selectedMonth === 0) {
+                    setSelectedMonth(11);
+                    setSelectedYear(prev => prev - 1);
+                  } else {
+                    setSelectedMonth(prev => prev - 1);
+                  }
+                }}
+              >
+                <ThemeText style={styles.monthNavButtonText}>←</ThemeText>
+              </TouchableOpacity>
+              
+              <ThemeText style={styles.monthYearTitle}>
+                {LocaleConfig.locales['es'].monthNames[selectedMonth]} {selectedYear}
+              </ThemeText>
+              
+              <TouchableOpacity 
+                style={styles.monthNavButton}
+                onPress={() => {
+                  if (selectedMonth === 11) {
+                    setSelectedMonth(0);
+                    setSelectedYear(prev => prev + 1);
+                  } else {
+                    setSelectedMonth(prev => prev + 1);
+                  }
+                }}
+              >
+                <ThemeText style={styles.monthNavButtonText}>→</ThemeText>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Active Filters Chips (Always visible if filters active) */}
+          {(statusFilter !== 'all' || dateFilter || barberFilter || sortOrder !== 'asc') && (
+            <View style={styles.activeFiltersContainer}>
+              <ThemeText style={styles.activeFiltersLabel}>Filtros activos:</ThemeText>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.activeFiltersChips}>
+                  {statusFilter !== 'all' && (
+                    <TouchableOpacity onPress={() => setStatusFilter('all')} style={styles.activeFilterChip}>
+                      <ThemeText style={styles.activeFilterChipText}>
+                        Estado: {getStatusText(statusFilter as ApiAppointment['status'])} ✕
                       </ThemeText>
                     </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.filterSection}>
-                <ThemeText style={styles.filterSectionTitle}>📅 Fecha Específica</ThemeText>
-                <View style={styles.dateFilterContainer}>
-                  <TextInput
-                    style={styles.dateInputField}
-                    placeholder="DD/MM/YYYY (ej: 15/12/2024)"
-                    value={dateFilter}
-                    onChangeText={setDateFilter}
-                    placeholderTextColor={Colors.dark.textLight}
-                  />
+                  )}
                   {dateFilter && (
-                    <TouchableOpacity 
-                      style={styles.clearDateButton}
-                      onPress={() => setDateFilter('')}
-                    >
-                      <ThemeText style={styles.clearButtonText}>✕</ThemeText>
+                    <TouchableOpacity onPress={() => setDateFilter('')} style={styles.activeFilterChip}>
+                      <ThemeText style={styles.activeFilterChipText}>Fecha: {dateFilter} ✕</ThemeText>
+                    </TouchableOpacity>
+                  )}
+                  {barberFilter && (
+                    <TouchableOpacity onPress={() => setBarberFilter('')} style={styles.activeFilterChip}>
+                      <ThemeText style={styles.activeFilterChipText}>Barbero: {barberFilter} ✕</ThemeText>
+                    </TouchableOpacity>
+                  )}
+                  {sortOrder !== 'asc' && (
+                    <TouchableOpacity onPress={() => setSortOrder('asc')} style={styles.activeFilterChip}>
+                      <ThemeText style={styles.activeFilterChipText}>Orden: Más lejanas ✕</ThemeText>
                     </TouchableOpacity>
                   )}
                 </View>
-              </View>
-
-              {hasAdminView && (
-                <View style={styles.filterSection}>
-                  <ThemeText style={styles.filterSectionTitle}>👨‍💼 Buscar por Barbero</ThemeText>
-                  <View style={styles.barberFilterContainer}>
-                    <TextInput
-                      style={styles.barberInputField}
-                      placeholder="Escribe el nombre del barbero..."
-                      value={barberFilter}
-                      onChangeText={setBarberFilter}
-                      placeholderTextColor={Colors.dark.textLight}
-                    />
-                    {barberFilter && (
-                      <TouchableOpacity 
-                        style={styles.clearBarberButton}
-                        onPress={() => setBarberFilter('')}
-                      >
-                        <ThemeText style={styles.clearButtonText}>✕</ThemeText>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              )}
-
-              {/* Dynamic Loading Range */}
-              <View style={styles.filterSection}>
-                <ThemeText style={styles.filterSectionTitle}>⏰ Rango de Carga</ThemeText>
-                <View style={styles.statusFilterContainer}>
-                  {[
-                    { key: 'week', label: 'Última Semana', icon: '📅' },
-                    { key: 'month', label: 'Último Mes', icon: '🗓️' },
-                    { key: 'all', label: 'Todas', icon: '🔄' }
-                  ].map(range => (
-                    <TouchableOpacity
-                      key={range.key}
-                      style={[
-                        styles.statusFilterButton,
-                        loadingRange === range.key && styles.statusFilterButtonActive,
-                        { borderColor: loadingRange === range.key ? Colors.dark.primary : Colors.dark.gray }
-                      ]}
-                      onPress={async () => {
-                        setLoadingRange(range.key as 'week' | 'month' | 'all');
-                        await loadAppointmentsByRange(range.key as 'week' | 'month' | 'all');
-                      }}
-                      disabled={isLoadingAppointments}
-                    >
-                      <ThemeText style={{
-                        ...styles.statusFilterText,
-                        ...(loadingRange === range.key ? styles.statusFilterTextActive : {})
-                      }}>
-                        {range.icon} {range.label}
-                      </ThemeText>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                {isLoadingMore && (
-                  <View style={styles.loadingMoreContainer}>
-                    <ActivityIndicator size="small" color={Colors.dark.primary} />
-                    <ThemeText style={styles.loadingMoreText}>Cargando citas...</ThemeText>
-                  </View>
-                )}
-              </View>
-
-              <View style={styles.filterActions}>
-                <TouchableOpacity 
-                  style={styles.clearAllFiltersButton}
-                  onPress={() => {
-                    setStatusFilter('all');
-                    setDateFilter('');
-                    setBarberFilter('');
-                  }}
-                >
-                  <ThemeText style={styles.clearAllFiltersText}>🗑️ Limpiar Filtros</ThemeText>
-                </TouchableOpacity>
-              </View>
+              </ScrollView>
             </View>
           )}
 
@@ -975,7 +975,12 @@ const AdminPanel = () => {
             </View>
           ) : filteredAppointments.length === 0 ? (
             <View style={styles.emptyState}>
-              <ThemeText style={styles.emptyStateText}>No hay citas programadas</ThemeText>
+              <ThemeText style={styles.emptyStateText}>
+                {viewMode === 'proximas' ? 'No hay citas próximas' :
+                 viewMode === 'este-mes' ? 'No hay citas este mes' :
+                 viewMode === 'historial' ? `No hay citas en ${LocaleConfig.locales['es'].monthNames[selectedMonth]} ${selectedYear}` :
+                 'No hay citas programadas'}
+              </ThemeText>
             </View>
           ) : (
             filteredAppointments.map((appointment) => {
@@ -1366,6 +1371,34 @@ const AdminPanel = () => {
                   </ThemeText>
                 </View>
               </View>
+
+              <View style={styles.filterSection}>
+                <ThemeText style={styles.filterSectionTitle}>🧭 Ordenar por Fecha</ThemeText>
+                <ThemeText style={styles.helperText}>Organiza la lista de citas según la fecha seleccionada.</ThemeText>
+                <View style={styles.statusFilterContainer}>
+                  {[
+                    { key: 'asc', label: 'Más próximas', icon: '⬆️' },
+                    { key: 'desc', label: 'Más lejanas', icon: '⬇️' },
+                  ].map(option => (
+                    <TouchableOpacity
+                      key={option.key}
+                      style={[
+                        styles.statusFilterButton,
+                        sortOrder === option.key && styles.statusFilterButtonActive,
+                        { borderColor: sortOrder === option.key ? Colors.dark.primary : Colors.dark.gray }
+                      ]}
+                      onPress={() => setSortOrder(option.key as 'asc' | 'desc')}
+                    >
+                      <ThemeText style={{
+                        ...styles.statusFilterText,
+                        ...(sortOrder === option.key ? styles.statusFilterTextActive : {})
+                      }}>
+                        {option.icon} {option.label}
+                      </ThemeText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
               <ThemeText style={styles.cardDescription}>Email: {searchedUser.email}</ThemeText>
               <ThemeText style={styles.cardDescription}>ID: {searchedUser.id}</ThemeText>
               <View style={styles.actionButtons}>
@@ -1504,6 +1537,93 @@ const AdminPanel = () => {
         {activeTab === 'availability' && renderAvailabilityTab()}
         {activeTab === 'users' && user?.isAdmin && renderUsersTab()}
       </ScrollView>
+
+      <Modal
+        visible={showFilterModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.filterModalContent}>
+            <View style={styles.filterModalHeader}>
+              <ThemeText style={styles.filterModalTitle}>Filtros</ThemeText>
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={() => setShowFilterModal(false)}
+              >
+                <ThemeText style={styles.modalCloseText}>×</ThemeText>
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Status Filter */}
+              <View style={styles.filterField}>
+                <ThemeText style={styles.filterLabel}>Estado de la Cita</ThemeText>
+                <View style={styles.filterOptionsContainer}>
+                  {[
+                    { key: 'all', label: 'Todas' },
+                    { key: 'pending', label: 'Pendientes' },
+                    { key: 'confirmed', label: 'Confirmadas' },
+                    { key: 'cancelled', label: 'Canceladas' },
+                    { key: 'completed', label: 'Completadas' }
+                  ].map(status => (
+                    <TouchableOpacity
+                      key={status.key}
+                      style={[
+                        styles.filterOptionChip,
+                        statusFilter === status.key && styles.filterOptionChipActive
+                      ]}
+                      onPress={() => setStatusFilter(status.key)}
+                    >
+                      <ThemeText style={[
+                        styles.filterOptionText,
+                        statusFilter === status.key && styles.filterOptionTextActive
+                      ]}>
+                        {status.label}
+                      </ThemeText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Sort Filter */}
+              <View style={styles.filterField}>
+                <ThemeText style={styles.filterLabel}>Ordenar por</ThemeText>
+                <View style={styles.filterOptionsContainer}>
+                  {[
+                    { key: 'asc', label: 'Más próximas' },
+                    { key: 'desc', label: 'Más lejanas' }
+                  ].map(option => (
+                    <TouchableOpacity
+                      key={option.key}
+                      style={[
+                        styles.filterOptionChip,
+                        sortOrder === option.key && styles.filterOptionChipActive
+                      ]}
+                      onPress={() => setSortOrder(option.key as 'asc' | 'desc')}
+                    >
+                      <ThemeText style={[
+                        styles.filterOptionText,
+                        sortOrder === option.key && styles.filterOptionTextActive
+                      ]}>
+                        {option.label}
+                      </ThemeText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              
+              <TouchableOpacity 
+                style={styles.applyFilterButton}
+                onPress={() => setShowFilterModal(false)}
+              >
+                <ThemeText style={styles.applyFilterButtonText}>Aplicar Filtros</ThemeText>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       <AvailabilityEditor
         visible={showAvailabilityEditor}
@@ -2196,6 +2316,39 @@ const styles = StyleSheet.create({
     color: Colors.dark.text,
     marginBottom: 10,
   },
+  helperText: {
+    fontSize: 12,
+    color: Colors.dark.textLight,
+    marginBottom: 6,
+  },
+  activeFiltersContainer: {
+    backgroundColor: Colors.dark.background,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 15,
+  },
+  activeFiltersLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.dark.text,
+  },
+  activeFiltersChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  activeFilterChip: {
+    backgroundColor: Colors.dark.primary,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  activeFilterChipText: {
+    color: Colors.dark.background,
+    fontSize: 12,
+    fontWeight: '600',
+  },
   statusFilterContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -2359,6 +2512,242 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
     textAlign: 'center',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  filterModalContent: {
+    backgroundColor: Colors.dark.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '85%',
+    borderTopWidth: 1,
+    borderTopColor: Colors.dark.gray,
+  },
+  filterModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.dark.gray,
+  },
+  filterModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.dark.text,
+  },
+  modalCloseButton: {
+    padding: 5,
+  },
+  modalCloseText: {
+    fontSize: 24,
+    color: Colors.dark.textLight,
+    lineHeight: 24,
+  },
+  filterField: {
+    marginBottom: 20,
+  },
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.dark.text,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  filterInputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.dark.gray,
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  filterInputIcon: {
+    fontSize: 16,
+    marginRight: 10,
+  },
+  filterInputText: {
+    fontSize: 16,
+    color: Colors.dark.text,
+    flex: 1,
+  },
+  filterInputPlaceholder: {
+    color: Colors.dark.textLight,
+  },
+  filterInputArrow: {
+    fontSize: 14,
+    color: Colors.dark.textLight,
+  },
+  filterOptionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 5,
+  },
+  filterOptionChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.dark.gray,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  filterOptionChipActive: {
+    backgroundColor: Colors.dark.primary,
+    borderColor: Colors.dark.primary,
+  },
+  filterOptionText: {
+    fontSize: 14,
+    color: Colors.dark.textLight,
+  },
+  filterOptionTextActive: {
+    color: Colors.dark.background,
+    fontWeight: '600',
+  },
+  applyFilterButton: {
+    backgroundColor: Colors.dark.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  applyFilterButtonText: {
+    color: Colors.dark.background,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  calendarModalContent: {
+    backgroundColor: Colors.dark.background,
+    margin: 20,
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    alignSelf: 'center',
+    width: '90%',
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  calendarTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.dark.text,
+  },
+  closeButtonText: {
+    color: Colors.dark.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  activeFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.dark.gray,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: Colors.dark.primary,
+  },
+  activeFilterChipText: {
+    fontSize: 12,
+    color: Colors.dark.primary,
+    fontWeight: '600',
+  },
+  dateSelectorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.dark.gray,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: Colors.dark.gray,
+  },
+  dateSelectorText: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.dark.text,
+  },
+  dateSelectorPlaceholder: {
+    color: Colors.dark.textLight,
+  },
+  calendarIcon: {
+    fontSize: 16,
+  },
+  clearDateButtonInside: {
+    padding: 4,
+  },
+  viewModeContainer: {
+    flexDirection: 'row',
+    backgroundColor: Colors.dark.gray,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: Colors.dark.primary,
+  },
+  viewModeTab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  viewModeTabActive: {
+    backgroundColor: Colors.dark.primary,
+  },
+  viewModeText: {
+    color: Colors.dark.textLight,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  viewModeTextActive: {
+    color: Colors.dark.background,
+    fontWeight: 'bold',
+  },
+  monthPickerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.dark.gray,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  monthNavButton: {
+    padding: 10,
+    backgroundColor: Colors.dark.background,
+    borderRadius: 8,
+    width: 40,
+    alignItems: 'center',
+  },
+  monthNavButtonText: {
+    color: Colors.dark.primary,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  monthYearTitle: {
+    color: Colors.dark.text,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
