@@ -28,6 +28,12 @@ import { SchedulesService, BarberSchedule } from '../../services/schedules.servi
 import { AdminService, AdminUser } from '../../services/admin.service';
 import { apiClient } from '@/services';
 import AppointmentDatePicker from '@/components/ui/AppointmentDatePicker';
+import {
+  formatAppointmentDateDisplay,
+  formatAppointmentTime,
+  formatDateForBackend,
+  parseAppointmentDate,
+} from '@/helpers/date';
 
 interface DaySchedule {
   day: string;
@@ -89,19 +95,13 @@ const AdminPanel = () => {
   const [searchedUser, setSearchedUser] = useState<any>(null);
   const [isSearchingUser, setIsSearchingUser] = useState(false);
   const hasAdminView = Boolean(user?.isAdmin || user?.role === 'staff');
-
-  // Helper to parse API dates in either ISO or DD/MM/YYYY formats
-  const parseAppointmentDate = (dateStr: string): Date | null => {
-    if (!dateStr) return null;
-    
-    if (dateStr.includes('/')) {
-      const [day, month, year] = dateStr.split('/');
-      const parsed = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
-      return Number.isNaN(parsed.getTime()) ? null : parsed;
+  const isStaffOnlyView = Boolean(!user?.isAdmin && user?.role === 'staff');
+  
+  const filterAppointmentsForViewer = (appointmentsList: ApiAppointment[]) => {
+    if (isStaffOnlyView && user?.id) {
+      return appointmentsList.filter(apt => apt.barberId === user.id);
     }
-    
-    const parsed = new Date(dateStr);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+    return appointmentsList;
   };
 
   // Helper function to get date range based on loading range
@@ -151,8 +151,10 @@ const AdminPanel = () => {
           return true;
         });
         
+        const viewerFilteredAppointments = filterAppointmentsForViewer(filteredByRange);
+        
         // Sort appointments from closest to furthest (chronologically)
-        const sortedAppointments = filteredByRange.sort((a, b) => {
+        const sortedAppointments = viewerFilteredAppointments.sort((a, b) => {
           const dateA = parseAppointmentDate(a.appointmentDate) || new Date(0);
           const dateB = parseAppointmentDate(b.appointmentDate) || new Date(0);
           const now = new Date();
@@ -293,19 +295,18 @@ const AdminPanel = () => {
 
     // Filter by date (DD/MM/YYYY format)
     if (dateFilter) {
+      const parsedFilterDate = parseAppointmentDate(dateFilter);
       filtered = filtered.filter(apt => {
-        try {
-          // Convert DD/MM/YYYY to Date object
-          const [day, month, year] = dateFilter.split('/');
-          const filterDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-          
-          // Convert appointment date to Date object
-          const aptDate = new Date(apt.appointmentDate);
-          
-          return aptDate.toDateString() === filterDate.toDateString();
-        } catch (error) {
-          return true; // Show all if date parsing fails
+        if (!parsedFilterDate) {
+          return true;
         }
+
+        const aptDate = parseAppointmentDate(apt.appointmentDate);
+        if (!aptDate) {
+          return true;
+        }
+
+        return aptDate.toDateString() === parsedFilterDate.toDateString();
       });
     }
 
@@ -320,8 +321,8 @@ const AdminPanel = () => {
 
     // Sort appointments from closest to furthest (chronologically)
     const sortedFiltered = filtered.sort((a, b) => {
-      const dateA = new Date(a.appointmentDate);
-      const dateB = new Date(b.appointmentDate);
+      const dateA = parseAppointmentDate(a.appointmentDate) || new Date(0);
+      const dateB = parseAppointmentDate(b.appointmentDate) || new Date(0);
       const now = new Date();
       
       // If dates are the same, sort by time
@@ -492,43 +493,11 @@ const AdminPanel = () => {
     );
   };
 
-  const formatDate = (isoString: string) => {
-    const date = new Date(isoString);
-    
-    // Spanish day names
-    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    
-    // Spanish month names
-    const monthNames = [
-      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-    ];
-    
-    const dayName = dayNames[date.getDay()];
-    const day = date.getDate();
-    const monthName = monthNames[date.getMonth()];
-    
-    return `${dayName} ${day} de ${monthName}`;
-  };
+  const formatDate = (dateString: string) => formatAppointmentDateDisplay(dateString);
 
-  const formatTime = (time: string) => {
-    if (!time) return '';
-    const [hourStr, minuteStr = '00'] = time.split(':');
-    const hours = parseInt(hourStr, 10);
-    if (Number.isNaN(hours)) return time;
-    const minutes = minuteStr.slice(0, 2).padEnd(2, '0');
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHour = hours % 12 || 12;
-    return `${displayHour}:${minutes} ${period}`;
-  };
+  const formatTime = (time: string) => formatAppointmentTime(time);
 
-  const formatDateToDDMMYYYY = (isoDate: string) => {
-    const date = new Date(isoDate);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
+  const formatDateToDDMMYYYY = (dateInput: string) => formatDateForBackend(dateInput);
 
   const updateAppointmentStatus = async (id: string, status: ApiAppointment['status']) => {
     Alert.alert(

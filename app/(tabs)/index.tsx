@@ -14,7 +14,12 @@ import ScreenWrapper from '@/components/ui/ScreenWrapper';
 import Colors from '@/constants/Colors';
 import { useAuth } from '@/components/auth/AuthContext';
 import { AppointmentsService, Appointment } from '@/services';
-import { parseAppointmentDate } from '@/helpers/date';
+import {
+	parseAppointmentDate,
+	formatAppointmentDateDisplay,
+	formatAppointmentTime,
+	isAppointmentWithinMinutes,
+} from '@/helpers/date';
 
 export default function HomeScreen() {
 	const { user, clearStorage, isLoading: authLoading } = useAuth();
@@ -137,43 +142,11 @@ export default function HomeScreen() {
 	}, []);
 
 
-	const formatTime = (timeSlot: string) => {
-		const [hours, minutes] = timeSlot.split(':');
-		const hour = parseInt(hours);
-		const ampm = hour >= 12 ? 'PM' : 'AM';
-		const displayHour = hour % 12 || 12;
-		return `${displayHour}:${minutes} ${ampm}`;
-	};
-
-	const formatDate = (dateString: string) => {
-		// Handle dd/mm/yyyy format from API
-		if (dateString.includes('/')) {
-			const [day, month, year] = dateString.split('/');
-			const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-			return date.toLocaleDateString('es-ES', {
-				weekday: 'long',
-				year: 'numeric',
-				month: 'long',
-				day: 'numeric',
-			});
-		} else {
-			// Fallback to standard date parsing
-			const date = new Date(dateString);
-			return date.toLocaleDateString('es-ES', {
-				weekday: 'long',
-				year: 'numeric',
-				month: 'long',
-				day: 'numeric',
-			});
-		}
-	};
+	const formatTime = (timeSlot: string) => formatAppointmentTime(timeSlot);
+	const formatDate = (dateString: string) => formatAppointmentDateDisplay(dateString, { includeYear: true });
 
 	const isWithin30Minutes = (appointment: Appointment) => {
-		const appointmentDateTime = new Date(appointment.appointmentDate);
-		const currentTime = new Date();
-		const timeDifferenceMs = appointmentDateTime.getTime() - currentTime.getTime();
-		const timeDifferenceMinutes = timeDifferenceMs / (1000 * 60);
-		return timeDifferenceMinutes <= 30;
+		return isAppointmentWithinMinutes(appointment.appointmentDate, appointment.timeSlot, 30);
 	};
 
 	const canRescheduleAppointment = (appointment: Appointment) => {

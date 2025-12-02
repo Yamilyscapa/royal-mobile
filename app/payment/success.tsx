@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
 import { NotificationService } from '@/services';
 import { useAuth } from '@/components/auth/AuthContext';
+import { formatAppointmentDateDisplay, formatAppointmentTime } from '@/helpers/date';
 
 interface PaymentSuccessParams {
 	timeSlot?: string;
@@ -30,31 +31,12 @@ export default function PaymentSuccessScreen() {
 	const [formattedDate, setFormattedDate] = useState<string>('');
 
 	useEffect(() => {
-		// Format the time for display
 		if (params.timeSlot) {
-			const formatTime = (time: string) => {
-				const [hours, minutes] = time.split(':');
-				const hour = parseInt(hours);
-				const ampm = hour >= 12 ? 'PM' : 'AM';
-				const displayHour = hour % 12 || 12;
-				return `${displayHour}:${minutes} ${ampm}`;
-			};
-			setFormattedTime(formatTime(params.timeSlot));
+			setFormattedTime(formatAppointmentTime(params.timeSlot));
 		}
 
-		// Format the date for display
 		if (params.appointmentDate) {
-			const formatDate = (dateStr: string) => {
-				const [day, month, year] = dateStr.split('/');
-				const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-				return date.toLocaleDateString('es-MX', {
-					weekday: 'long',
-					year: 'numeric',
-					month: 'long',
-					day: 'numeric',
-				});
-			};
-			setFormattedDate(formatDate(params.appointmentDate));
+			setFormattedDate(formatAppointmentDateDisplay(params.appointmentDate, { includeYear: true }));
 		}
 
 		// Send notification when payment is successful

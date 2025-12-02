@@ -24,6 +24,7 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { ServicesService, AppointmentsService, PaymentsService, apiClient } from '@/services';
 import { Service, CreateAppointmentData } from '@/services';
 import { API_CONFIG } from '@/config/api';
+import { formatDateForBackend } from '@/helpers/date';
 
 interface Barber {
 	id: string;
@@ -423,12 +424,7 @@ export default function AppointmentScreen() {
 			setAlertShown(false); // Reset alert flag for new payment
 			setPaymentCancelled(false); // Reset payment cancelled flag
 
-					// Format date for API (expects dd/mm/yyyy format) - use timezone-safe parsing
-		const formattedDate = (() => {
-			// selectedDate is in ISO format (YYYY-MM-DD), parse it directly
-			const [year, month, day] = selectedDate.split('-');
-			return `${day}/${month}/${year}`;
-		})();
+		const formattedDate = formatDateForBackend(selectedDate);
 
             // Use HTTPS bounce pages (Safari-friendly) that immediately redirect to our app scheme; auth session will close automatically
             const successUrl = `https://theroyalbarber.com/payment/success?status=success&timeSlot=${encodeURIComponent(selectedTime)}&appointmentDate=${encodeURIComponent(formattedDate)}&serviceName=${encodeURIComponent(selectedService.name)}&barberName=${encodeURIComponent(selectedBarber.name)}&amount=${encodeURIComponent(selectedService.price.toString())}`;

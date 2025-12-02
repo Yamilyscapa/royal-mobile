@@ -1,3 +1,4 @@
+import { formatDateForBackend } from '@/helpers/date';
 import { apiClient, ApiResponse } from './api';
 
 // Types
@@ -57,13 +58,9 @@ export class AppointmentsService {
   // Create a new appointment
   static async createAppointment(data: CreateAppointmentData): Promise<ApiResponse<Appointment>> {
     try {
-      // Convert date from yyyy-mm-dd to dd/mm/yyyy format for backend
-      const [year, month, day] = data.appointmentDate.split('-');
-      const formattedDate = `${day}/${month}/${year}`;
-      
       const appointmentData = {
         ...data,
-        appointmentDate: formattedDate
+        appointmentDate: formatDateForBackend(data.appointmentDate)
       };
       
       console.log('Sending appointment data to API:', appointmentData);
@@ -204,7 +201,7 @@ export class AppointmentsService {
   static async rescheduleAppointment(id: string, newDate: string, newTimeSlot: string): Promise<ApiResponse<Appointment>> {
     try {
       return await apiClient.put<Appointment>(`/appointments/${id}/reschedule`, {
-        appointmentDate: newDate,
+        appointmentDate: formatDateForBackend(newDate),
         timeSlot: newTimeSlot,
       }, true);
     } catch (error) {

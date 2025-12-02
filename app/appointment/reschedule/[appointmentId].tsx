@@ -12,7 +12,7 @@ import { Appointment } from '@/services';
 import { apiClient } from '@/services/api';
 import { useAuth } from '@/components/auth/AuthContext';
 import ScreenWrapper from '@/components/ui/ScreenWrapper';
-import { parseAppointmentDate } from '@/helpers/date';
+import { formatAppointmentTime, formatDateForBackend, isAppointmentWithinMinutes, parseAppointmentDate } from '@/helpers/date';
 
 export default function RescheduleScreen() {
     const { appointmentId } = useLocalSearchParams();
@@ -168,41 +168,13 @@ export default function RescheduleScreen() {
         return closestAppointment?.id === appointment.id;
     };
 
-    const formatDate = (dateString: string) => {
-        if (!dateString) return "";
-        let date: Date;
-        if (dateString.includes('/')) {
-            const [day, month, year] = dateString.split('/');
-            date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-        } else {
-            date = new Date(dateString);
-        }
-        // Format as dd/mm/yyyy
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
-    };
+    const formatDate = (dateString: string) => formatDateForBackend(dateString);
 
-    const formatTime = (timeString: string) => {
-        if (!timeString) return "";
-        const [hour, minute = '00'] = timeString.split(':');
-        const hourNum = parseInt(hour);
-        const minuteNum = parseInt(minute);
-        // Format as hh:mm
-        return `${hourNum.toString().padStart(2, '0')}:${minuteNum.toString().padStart(2, '0')}`;
-    };
+    const formatTime = (timeString: string) => formatAppointmentTime(timeString, { use24Hour: true });
 
     const isWithin30Minutes = () => {
         if (!appointment) return false;
-        const appointmentDateTime = parseAppointmentDate(appointment.appointmentDate);
-        if (!appointmentDateTime) return false;
-        const [hours, minutes] = appointment.timeSlot.split(':');
-        appointmentDateTime.setHours(parseInt(hours, 10), parseInt(minutes || '0', 10), 0, 0);
-        const currentTime = new Date();
-        const timeDifferenceMs = appointmentDateTime.getTime() - currentTime.getTime();
-        const timeDifferenceMinutes = timeDifferenceMs / (1000 * 60);
-        return timeDifferenceMinutes <= 30;
+        return isAppointmentWithinMinutes(appointment.appointmentDate, appointment.timeSlot, 30);
     };
 
     const canReschedule = () => {
@@ -269,11 +241,6 @@ export default function RescheduleScreen() {
         setIsRescheduling(true);
     };
 
-    const convertDateToBackendFormat = (dateString: string): string => {
-        const [year, month, day] = dateString.split('-');
-        return `${day}/${month}/${year}`;
-    };
-
     const handleConfirmReschedule = async (date: string, time: string) => {
         if (!appointment) return;
         Alert.alert(
@@ -309,7 +276,7 @@ export default function RescheduleScreen() {
         
         try {
             setIsSubmitting(true);
-            const backendDate = convertDateToBackendFormat(date);
+            const backendDate = formatDateForBackend(date);
             const response = await AppointmentsService.rescheduleAppointment(
                 appointment.id,
                 backendDate,

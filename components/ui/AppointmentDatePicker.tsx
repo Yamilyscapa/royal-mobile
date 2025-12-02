@@ -5,6 +5,7 @@ import Colors from "@/constants/Colors"
 import Button from "@/components/Button"
 import { SchedulesService } from "@/services"
 import type { AvailabilityResponse, TimeSlot } from "@/services"
+import { parseAppointmentDate } from "@/helpers/date"
 
 // Configure Spanish locale
 LocaleConfig.locales['es'] = {
@@ -99,8 +100,8 @@ export default function AppointmentDatePicker({
         // Ensure appointments is an array before filtering
         if (allDebugResponse.data?.appointments && Array.isArray(allDebugResponse.data.appointments)) {
           const appointmentsForSelectedDate = allDebugResponse.data.appointments.filter((apt: any) => {
-            const aptDate = new Date(apt.appointmentDate);
-            return aptDate >= startOfDay && aptDate <= endOfDay;
+            const aptDate = parseAppointmentDate(apt.appointmentDate);
+            return aptDate ? (aptDate >= startOfDay && aptDate <= endOfDay) : false;
           });
           
           setDebugAppointments(appointmentsForSelectedDate);

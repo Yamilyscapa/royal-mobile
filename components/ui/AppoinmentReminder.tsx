@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
 import { ThemeText } from '@/components/Themed';
 import { LinearGradient } from 'expo-linear-gradient';
+import { formatAppointmentDateDisplay, formatAppointmentTime } from '@/helpers/date';
 
 interface Appointment {
 	id: string;
@@ -36,56 +37,12 @@ export default function AppointmentReminder({ appointment }: AppointmentReminder
 		return null;
 	}
 
-	const formatTime = (timeSlot: string) => {
-		const [hours, minutes] = timeSlot.split(':');
-		const hour = parseInt(hours);
-		const ampm = hour >= 12 ? 'PM' : 'AM';
-		const displayHour = hour % 12 || 12;
-		return `${displayHour}:${minutes} ${ampm}`;
-	};
-
-	const formatDate = (dateString: string) => {
-		try {
-			// Handle different date formats
-			let date: Date;
-
-			if (dateString.includes('/')) {
-				// Handle dd/mm/yyyy format
-				const [day, month, year] = dateString.split('/');
-				date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-			} else {
-				// Handle ISO format (2025-06-29T06:00:00.000Z) or other standard formats
-				date = new Date(dateString);
-			}
-
-			// Check if date is valid
-			if (isNaN(date.getTime())) {
-				return 'Fecha inválida';
-			}
-
-			// Spanish day names
-			const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-			
-			// Spanish month names
-			const monthNames = [
-				'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-				'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-			];
-			
-			const dayName = dayNames[date.getDay()];
-			const day = date.getDate();
-			const monthName = monthNames[date.getMonth()];
-			
-			return `${dayName} ${day} de ${monthName}`;
-		} catch (error) {
-			return 'Fecha inválida';
-		}
-	};
-
 	// Get service name and price from either nested object or flat properties
 	const serviceName = appointment.service?.name || appointment.serviceName || 'Servicio';
 	const servicePrice = appointment.servicePrice
 	const barberName = appointment.barber?.name || appointment.barberName;
+	const formattedDate = formatAppointmentDateDisplay(appointment.appointmentDate);
+	const formattedTime = formatAppointmentTime(appointment.timeSlot);
 	
 	return (
 		<View style={styles.container}>
@@ -144,7 +101,7 @@ export default function AppointmentReminder({ appointment }: AppointmentReminder
 							<Ionicons name="time" color={Colors.dark.primary} size={16} />
 						</View>
 						<ThemeText style={styles.datetimeText}>
-							{formatDate(appointment.appointmentDate)} a las {formatTime(appointment.timeSlot)}
+							{formattedDate} a las {formattedTime}
 						</ThemeText>
 					</View>
 				</View>

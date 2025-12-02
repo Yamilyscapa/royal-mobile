@@ -46,7 +46,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.theroyalbarber.app",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "minimumOsVersion": "13.0",
       "requireFullScreen": true,
       "associatedDomains": [
@@ -93,7 +93,7 @@
     },
     "android": {
       "package": "com.theroyalbarber.app",
-      "versionCode": 5,
+      "versionCode": 6,
       "minSdkVersion": 21,
       "compileSdkVersion": 34,
       "targetSdkVersion": 34,

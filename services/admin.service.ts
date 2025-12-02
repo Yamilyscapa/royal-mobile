@@ -1,3 +1,4 @@
+import { parseAppointmentDate } from '@/helpers/date';
 import { apiClient, ApiResponse } from './api';
 import { Appointment, Service } from './index';
 
@@ -301,12 +302,16 @@ export class AdminService {
           .reduce((sum, a) => sum + (a.servicePrice || 0), 0),
         monthlyRevenue: appointments
           .filter(a => {
-            const appointmentDate = new Date(a.appointmentDate);
-            const currentMonth = new Date().getMonth();
-            const currentYear = new Date().getFullYear();
-            return a.status === 'completed' && 
-                   appointmentDate.getMonth() === currentMonth && 
-                   appointmentDate.getFullYear() === currentYear;
+            const appointmentDate = parseAppointmentDate(a.appointmentDate);
+            if (!appointmentDate) {
+              return false;
+            }
+            const now = new Date();
+            return (
+              a.status === 'completed' &&
+              appointmentDate.getMonth() === now.getMonth() &&
+              appointmentDate.getFullYear() === now.getFullYear()
+            );
           })
           .reduce((sum, a) => sum + (a.servicePrice || 0), 0),
       };

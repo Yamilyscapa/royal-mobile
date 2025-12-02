@@ -4,6 +4,11 @@ import { ThemeText } from '@/components/Themed';
 import Button from '@/components/Button';
 import Colors from '@/constants/Colors';
 import { Appointment } from '@/services';
+import {
+	formatAppointmentDateDisplay,
+	formatAppointmentTime,
+	isAppointmentWithinMinutes,
+} from '@/helpers/date';
 
 interface AppointmentCardProps {
 	appointment: Appointment;
@@ -14,42 +19,6 @@ interface AppointmentCardProps {
 }
 
 export default function AppointmentCard({ appointment, onCancel, onReschedule, onPress, isClosestAppointment }: AppointmentCardProps) {
-	const formatTime = (timeSlot: string) => {
-		const [hours, minutes] = timeSlot.split(':');
-		const hour = parseInt(hours);
-		const ampm = hour >= 12 ? 'PM' : 'AM';
-		const displayHour = hour % 12 || 12;
-		return `${displayHour}:${minutes} ${ampm}`;
-	};
-
-	const formatDate = (dateString: string) => {
-		let date: Date;
-		
-		// Handle dd/mm/yyyy format from API
-		if (dateString.includes('/')) {
-			const [day, month, year] = dateString.split('/');
-			date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-		} else {
-			// Fallback to standard date parsing
-			date = new Date(dateString);
-		}
-		
-		// Spanish day names
-		const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-		
-		// Spanish month names
-		const monthNames = [
-			'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-			'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-		];
-		
-		const dayName = dayNames[date.getDay()];
-		const day = date.getDate();
-		const monthName = monthNames[date.getMonth()];
-		
-		return `${dayName} ${day} de ${monthName}`;
-	};
-
 	const formatPrice = (price: string | number) => {
 		const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
 		return new Intl.NumberFormat('es-ES', {
@@ -94,12 +63,7 @@ export default function AppointmentCard({ appointment, onCancel, onReschedule, o
 
 	const canCancel = appointment.status === 'confirmed' || appointment.status === 'pending';
 	
-	// Check if appointment is within 30 minutes
-	const appointmentDateTime = new Date(appointment.appointmentDate);
-	const currentTime = new Date();
-	const timeDifferenceMs = appointmentDateTime.getTime() - currentTime.getTime();
-	const timeDifferenceMinutes = timeDifferenceMs / (1000 * 60);
-	const isWithin30Minutes = timeDifferenceMinutes <= 30;
+	const isWithin30Minutes = isAppointmentWithinMinutes(appointment.appointmentDate, appointment.timeSlot, 30);
 	
 	const canReschedule = (appointment.status === 'confirmed' || appointment.status === 'pending') && 
 		        (appointment.rescheduleCount || 0) < 1 && !isWithin30Minutes && (isClosestAppointment ?? true);
@@ -123,8 +87,8 @@ export default function AppointmentCard({ appointment, onCancel, onReschedule, o
 					<ThemeText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 5 }}>
 						{appointment.service?.name || 'Servicio'}
 					</ThemeText>
-					<ThemeText style={{ fontSize: 14, color: Colors.dark.textLight, marginBottom: 5 }}>
-						{formatDate(appointment.appointmentDate)} - {formatTime(appointment.timeSlot)}
+						<ThemeText style={{ fontSize: 14, color: Colors.dark.textLight, marginBottom: 5 }}>
+						{formatAppointmentDateDisplay(appointment.appointmentDate)} - {formatAppointmentTime(appointment.timeSlot)}
 					</ThemeText>
 					{appointment.barber && (
 						<ThemeText style={{ fontSize: 14, color: Colors.dark.textLight, marginBottom: 5 }}>
