@@ -35,8 +35,9 @@ export function parseAppointmentDate(dateString: string): Date | null {
     }
   }
 
-  // Handle ISO strings (yyyy-mm-dd or yyyy-mm-ddThh:mm:ss)
-  const isoMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  // Handle ISO strings (yyyy-mm-dd or yyyy-mm-ddThh:mm:ss or full ISO)
+  // We extract just the date parts to avoid timezone shifting (e.g. UTC to Local conversion)
+  const isoMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (isoMatch) {
     const [, yearStr, monthStr, dayStr] = isoMatch;
     const parsed = new Date(
