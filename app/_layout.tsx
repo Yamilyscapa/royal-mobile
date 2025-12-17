@@ -45,6 +45,9 @@ function RootLayoutNav() {
 		const initializeNotifications = async () => {
 			try {
 				await NotificationService.requestPermissions();
+				if (user) {
+					await NotificationService.setupPushNotifications();
+				}
 				console.log('Notifications initialized successfully');
 			} catch (error) {
 				console.error('Error initializing notifications:', error);
@@ -52,7 +55,7 @@ function RootLayoutNav() {
 		};
 
 		initializeNotifications();
-	}, []);
+	}, [user]);
 
 
 

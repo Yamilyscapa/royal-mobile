@@ -219,4 +219,16 @@ export class AuthService {
       };
     }
   }
+
+  // Register/Update push token
+  static async registerPushToken(expoPushToken: string): Promise<ApiResponse<{ message: string }>> {
+    try {
+      return await apiClient.post<{ message: string }>('/users/push-token', { expoPushToken });
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to register push token',
+      };
+    }
+  }
 }

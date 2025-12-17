@@ -2,7 +2,7 @@
   "expo": {
     "name": "The Royal Barber",
     "slug": "the-royal-barber",
-    "version": "1.3.3",
+    "version": "1.3.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "app",
@@ -107,7 +107,8 @@
         "READ_EXTERNAL_STORAGE",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "INTERNET"
+        "INTERNET",
+        "POST_NOTIFICATIONS"
       ],
       "intentFilters": [
         {
@@ -166,7 +167,15 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#000000",
+          "sounds": []
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

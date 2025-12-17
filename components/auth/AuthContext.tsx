@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getItem, setItem, deleteItem } from '@/helpers/secureStore';
-import { AuthService, User, LoginCredentials, RegisterData } from '@/services';
+import { AuthService, User, LoginCredentials, RegisterData, NotificationService } from '@/services';
 import { apiClient } from '@/services/api';
 
 interface AuthContextType {
@@ -84,6 +84,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             if (response.success && response.data) {
               setUser(response.data);
+              try {
+                await NotificationService.setupPushNotifications();
+              } catch (error) {
+                console.warn('Failed to setup push notifications on app start:', error);
+              }
             } else {
               // Clear tokens if user data fetch fails
               await redirectToWelcome();
@@ -171,6 +176,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(response.data.user);
         // Store user data in secure storage for offline access
         await setItem('user', JSON.stringify(response.data.user));
+
+        try {
+          await NotificationService.setupPushNotifications();
+        } catch (error) {
+          console.warn('Failed to setup push notifications after login:', error);
+        }
         
         return true;
       }
@@ -201,6 +212,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(response.data.user);
         // Store user data in secure storage for offline access
         await setItem('user', JSON.stringify(response.data.user));
+
+        try {
+          await NotificationService.setupPushNotifications();
+        } catch (error) {
+          console.warn('Failed to setup push notifications after signup:', error);
+        }
+
         return true;
       }
       
