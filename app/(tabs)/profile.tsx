@@ -320,14 +320,6 @@ export default function ProfileScreen() {
 							<ThemeText style={styles.cardTitle}>Configuración</ThemeText>
 						</View>
 
-						{/* Disclaimer */}
-						<View style={styles.disclaimerContainer}>
-							<Ionicons name="information-circle" size={20} color={Colors.dark.primary} />
-							<ThemeText style={styles.disclaimerText}>
-								Los recordatorios de citas se envían automáticamente vía WhatsApp 15 minutos antes de tu cita programada.
-							</ThemeText>
-						</View>
-
 						<TouchableOpacity
 							style={styles.menuItem}
 							onPress={() => setShowLogoutModal(true)}
@@ -799,23 +791,6 @@ const styles = StyleSheet.create({
 	notificationSubtitle: {
 		fontSize: 14,
 		color: Colors.dark.textLight,
-	},
-	disclaimerContainer: {
-		flexDirection: 'row',
-		alignItems: 'flex-start',
-		backgroundColor: Colors.dark.background,
-		borderRadius: 12,
-		padding: 16,
-		marginBottom: 16,
-		borderWidth: 1,
-		borderColor: Colors.dark.primary,
-	},
-	disclaimerText: {
-		fontSize: 14,
-		color: Colors.dark.textLight,
-		marginLeft: 8,
-		flex: 1,
-		lineHeight: 20,
 	},
 	// Logout Modal Styles
 	overlay: {

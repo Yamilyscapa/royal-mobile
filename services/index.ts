@@ -51,5 +51,4 @@ export type {
 } from './admin.service';
 
 // Export notifications service
-export { NotificationService } from './notifications.service';
-export type { AppointmentNotificationData } from './notifications.service'; 
+export { NotificationService } from './notifications.service'; 

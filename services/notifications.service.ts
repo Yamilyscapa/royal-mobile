@@ -17,14 +17,6 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export interface AppointmentNotificationData {
-  username: string;
-  service: string;
-  time: string;
-  isPartialPayment?: boolean;
-  remainingAmount?: number;
-}
-
 export class NotificationService {
   // Request notification permissions
   static async requestPermissions(): Promise<boolean> {
@@ -91,75 +83,6 @@ export class NotificationService {
     }
   }
 
-  // Send appointment confirmation notification
-  static async sendAppointmentConfirmation(data: AppointmentNotificationData): Promise<void> {
-    try {
-      const hasPermission = await this.requestPermissions();
-      if (!hasPermission) {
-        console.log('Notification permission not granted');
-        return;
-      }
-
-      // Format time to HH:00 format
-      const formatTime = (time: string): string => {
-        const [hours, minutes] = time.split(':');
-        const hour = parseInt(hours);
-        const displayHour = hour.toString().padStart(2, '0');
-        return `${displayHour}:00`;
-      };
-
-      // Create the main message
-      let message = `${data.username}! Tu ${data.service} ha sido confirmado a las ${formatTime(data.time)}`;
-
-      // Add partial payment reminder if applicable
-      if (data.isPartialPayment && data.remainingAmount) {
-        const formattedAmount = new Intl.NumberFormat('es-MX', {
-          style: 'currency',
-          currency: 'MXN',
-        }).format(data.remainingAmount);
-        message += `\n\nRecuerda pagar el restante de ${formattedAmount} en la barbería`;
-      }
-
-      // Schedule the notification
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '¡Cita Confirmada!',
-          body: message,
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.HIGH,
-        },
-        trigger: null, // Send immediately
-      });
-
-      console.log('Appointment confirmation notification sent');
-    } catch (error) {
-      console.error('Error sending appointment confirmation notification:', error);
-    }
-  }
-
-  // Send test notification
-  static async sendTestNotification(): Promise<void> {
-    try {
-      const hasPermission = await this.requestPermissions();
-      if (!hasPermission) {
-        console.log('Notification permission not granted');
-        return;
-      }
-
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Test Notification',
-          body: 'This is a test notification from The Royal Barber App',
-          sound: true,
-        },
-        trigger: null,
-      });
-
-      console.log('Test notification sent');
-    } catch (error) {
-      console.error('Error sending test notification:', error);
-    }
-  }
 
   // Cancel all notifications
   static async cancelAllNotifications(): Promise<void> {
@@ -212,6 +135,32 @@ export class NotificationService {
     } catch (error) {
       console.error('Error setting up push notifications:', error);
       return false;
+    }
+  }
+
+  // Get current push token (useful for checking if token changed)
+  static async getCurrentPushToken(): Promise<string | null> {
+    try {
+      if (!Device.isDevice) {
+        return null;
+      }
+
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') {
+        return null;
+      }
+
+      try {
+        const tokenData = await Notifications.getExpoPushTokenAsync({ projectId: EAS_PROJECT_ID });
+        return tokenData.data;
+      } catch (tokenError) {
+        console.warn('Failed to get Expo push token with projectId, retrying without it', tokenError);
+        const tokenData = await Notifications.getExpoPushTokenAsync();
+        return tokenData.data;
+      }
+    } catch (error) {
+      console.error('Error getting current push token:', error);
+      return null;
     }
   }
 }

@@ -21,6 +21,7 @@ import 'react-native-reanimated';
 import { AuthProvider, useAuth } from '@/components/auth/AuthContext';
 import LoadingScreen from '@/components/auth/LoadingScreen';
 import { NotificationService } from '@/services';
+import * as Notifications from 'expo-notifications';
 
 export {
 	// Catch any errors thrown by the Layout component.
@@ -56,6 +57,66 @@ function RootLayoutNav() {
 
 		initializeNotifications();
 	}, [user]);
+
+	// Setup notification listeners for push notifications from server
+	React.useEffect(() => {
+		// Listener for notifications received while app is in foreground
+		const notificationReceivedListener = Notifications.addNotificationReceivedListener(notification => {
+			console.log('📬 Notification received (foreground):', notification);
+			// You can show an alert, update UI, etc.
+			// The notification will be shown automatically based on the handler configuration
+		});
+
+		// Listener for when user taps on a notification
+		const notificationResponseListener = Notifications.addNotificationResponseReceivedListener(response => {
+			console.log('👆 Notification tapped:', response);
+			const data = response.notification.request.content.data;
+			
+			// Handle navigation based on notification data
+			if (data?.type === 'appointment') {
+				// Navigate to appointment details or history
+				if (data?.appointmentId) {
+					router.push(`/(tabs)/history`);
+				} else {
+					router.push(`/(tabs)/history`);
+				}
+			} else if (data?.type === 'payment') {
+				// Navigate to payment or history
+				router.push(`/(tabs)/history`);
+			} else if (data?.url) {
+				// Handle custom URL from notification
+				Linking.openURL(data.url);
+			}
+			// Add more handlers as needed based on your notification types
+		});
+
+		// Check if app was opened from a notification
+		Notifications.getLastNotificationResponseAsync().then(response => {
+			if (response) {
+				console.log('📱 App opened from notification:', response);
+				const data = response.notification.request.content.data;
+				
+				// Handle navigation based on notification data
+				if (data?.type === 'appointment') {
+					if (data?.appointmentId) {
+						router.push(`/(tabs)/history`);
+					} else {
+						router.push(`/(tabs)/history`);
+					}
+				} else if (data?.type === 'payment') {
+					router.push(`/(tabs)/history`);
+				} else if (data?.url) {
+					Linking.openURL(data.url);
+				}
+			}
+		});
+
+		// Cleanup listeners on unmount
+		return () => {
+			notificationReceivedListener.remove();
+			notificationResponseListener.remove();
+		};
+	}, [router]);
 
 
 

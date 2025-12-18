@@ -8,7 +8,6 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '@/constants/Colors';
-import { NotificationService } from '@/services';
 import { useAuth } from '@/components/auth/AuthContext';
 
 export default function PaymentTestScreen() {
@@ -42,41 +41,6 @@ export default function PaymentTestScreen() {
 		});
 	};
 
-	const testNotification = async () => {
-		try {
-			await NotificationService.sendTestNotification();
-		} catch (error) {
-			console.error('Error sending test notification:', error);
-		}
-	};
-
-	const testAppointmentNotification = async () => {
-		try {
-			await NotificationService.sendAppointmentConfirmation({
-				username: user?.name || user?.firstName || 'Cliente',
-				service: 'Corte Clásico',
-				time: '14:30',
-				isPartialPayment: false,
-				remainingAmount: 0,
-			});
-		} catch (error) {
-			console.error('Error sending appointment notification:', error);
-		}
-	};
-
-	const testPartialPaymentNotification = async () => {
-		try {
-			await NotificationService.sendAppointmentConfirmation({
-				username: user?.name || user?.firstName || 'Cliente',
-				service: 'Corte Premium',
-				time: '16:00',
-				isPartialPayment: true,
-				remainingAmount: 150.00,
-			});
-		} catch (error) {
-			console.error('Error sending partial payment notification:', error);
-		}
-	};
 
 	const goBack = () => {
 		router.back();
@@ -99,17 +63,6 @@ export default function PaymentTestScreen() {
 						<Text style={styles.buttonText}>Test Failed Screen</Text>
 					</TouchableOpacity>
 
-					<TouchableOpacity style={styles.notificationButton} onPress={testNotification}>
-						<Text style={styles.buttonText}>Test Basic Notification</Text>
-					</TouchableOpacity>
-
-					<TouchableOpacity style={styles.notificationButton} onPress={testAppointmentNotification}>
-						<Text style={styles.buttonText}>Test Appointment Notification</Text>
-					</TouchableOpacity>
-
-					<TouchableOpacity style={styles.notificationButton} onPress={testPartialPaymentNotification}>
-						<Text style={styles.buttonText}>Test Partial Payment Notification</Text>
-					</TouchableOpacity>
 
 					<TouchableOpacity style={styles.backButton} onPress={goBack}>
 						<Text style={styles.backButtonText}>Go Back</Text>

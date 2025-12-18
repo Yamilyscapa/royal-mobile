@@ -458,12 +458,8 @@ const AdminPanel = () => {
           const res = await AppointmentsService.getUserAppointments();
           console.log('Fetched user appointments:', res);
           if (res && res.success && res.data && Array.isArray(res.data)) {
-            // Show all appointments when loadingRange is 'all', otherwise exclude completed
-            const filteredAppointments = loadingRange === 'all' 
-              ? res.data 
-              : res.data.filter((apt: any) => apt.status !== 'completed');
-            console.log(`User appointments (${loadingRange === 'all' ? 'including all statuses' : 'excluding completed'}):`, filteredAppointments.length);
-            setAppointmentsSafe(filteredAppointments);
+            // Show all appointments
+            setAppointmentsSafe(res.data);
           } else {
             console.log('No user appointments data');
             console.log('Response structure:', { success: res?.success, hasData: !!res?.data, isArray: Array.isArray(res?.data) });
@@ -874,7 +870,7 @@ const AdminPanel = () => {
               style={[styles.viewModeTab, viewMode === 'proximas' && styles.viewModeTabActive]} 
               onPress={() => setViewMode('proximas')}
             >
-              <ThemeText style={[styles.viewModeText, viewMode === 'proximas' && styles.viewModeTextActive]}>
+              <ThemeText style={viewMode === 'proximas' ? [styles.viewModeText, styles.viewModeTextActive] as any : styles.viewModeText}>
                 Próximas ({viewCounts.proximas})
               </ThemeText>
             </TouchableOpacity>
@@ -882,7 +878,7 @@ const AdminPanel = () => {
               style={[styles.viewModeTab, viewMode === 'este-mes' && styles.viewModeTabActive]} 
               onPress={() => setViewMode('este-mes')}
             >
-              <ThemeText style={[styles.viewModeText, viewMode === 'este-mes' && styles.viewModeTextActive]}>
+              <ThemeText style={viewMode === 'este-mes' ? [styles.viewModeText, styles.viewModeTextActive] as any : styles.viewModeText}>
                 Este Mes ({viewCounts.esteMes})
               </ThemeText>
             </TouchableOpacity>
@@ -890,7 +886,7 @@ const AdminPanel = () => {
               style={[styles.viewModeTab, viewMode === 'historial' && styles.viewModeTabActive]} 
               onPress={() => setViewMode('historial')}
             >
-              <ThemeText style={[styles.viewModeText, viewMode === 'historial' && styles.viewModeTextActive]}>Historial</ThemeText>
+              <ThemeText style={viewMode === 'historial' ? [styles.viewModeText, styles.viewModeTextActive] as any : styles.viewModeText}>Historial</ThemeText>
             </TouchableOpacity>
           </View>
 
@@ -1002,7 +998,7 @@ const AdminPanel = () => {
                   </View>
                   <ThemeText style={styles.cardPrice}>{a.serviceName || appointment.service?.name || appointment.serviceId}</ThemeText>
                   <ThemeText style={styles.cardDescription}>{formatDate(appointment.appointmentDate)} - {formatTime(appointment.timeSlot)}</ThemeText>
-                  <ThemeText style={styles.cardDescription}>{a.customerEmail || appointment.user?.email || ''}</ThemeText>
+                  <ThemeText style={styles.cardDescription}>{a.customerPhone || (appointment.user as any)?.phone || a.customerEmail || appointment.user?.email || ''}</ThemeText>
                   
                   {/* Payment Information */}
                   {(a.paymentAmount || a.paymentType) && (
@@ -1576,10 +1572,7 @@ const AdminPanel = () => {
                       ]}
                       onPress={() => setStatusFilter(status.key)}
                     >
-                      <ThemeText style={[
-                        styles.filterOptionText,
-                        statusFilter === status.key && styles.filterOptionTextActive
-                      ]}>
+                      <ThemeText style={statusFilter === status.key ? [styles.filterOptionText, styles.filterOptionTextActive] as any : styles.filterOptionText}>
                         {status.label}
                       </ThemeText>
                     </TouchableOpacity>
@@ -1603,10 +1596,7 @@ const AdminPanel = () => {
                       ]}
                       onPress={() => setSortOrder(option.key as 'asc' | 'desc')}
                     >
-                      <ThemeText style={[
-                        styles.filterOptionText,
-                        sortOrder === option.key && styles.filterOptionTextActive
-                      ]}>
+                      <ThemeText style={sortOrder === option.key ? [styles.filterOptionText, styles.filterOptionTextActive] as any : styles.filterOptionText}>
                         {option.label}
                       </ThemeText>
                     </TouchableOpacity>
@@ -2652,22 +2642,6 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: Colors.dark.primary,
     fontSize: 16,
-    fontWeight: '600',
-  },
-  activeFilterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.dark.gray,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: Colors.dark.primary,
-  },
-  activeFilterChipText: {
-    fontSize: 12,
-    color: Colors.dark.primary,
     fontWeight: '600',
   },
   dateSelectorButton: {
