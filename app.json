@@ -2,7 +2,7 @@
   "expo": {
     "name": "The Royal Barber",
     "slug": "the-royal-barber",
-    "version": "1.3.4",
+    "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "app",
@@ -46,7 +46,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.theroyalbarber.app",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "minimumOsVersion": "13.0",
       "requireFullScreen": true,
       "associatedDomains": [
@@ -93,7 +93,7 @@
     },
     "android": {
       "package": "com.theroyalbarber.app",
-      "versionCode": 7,
+      "versionCode": 8,
       "minSdkVersion": 21,
       "compileSdkVersion": 34,
       "targetSdkVersion": 34,

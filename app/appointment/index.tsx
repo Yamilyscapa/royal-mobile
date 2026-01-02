@@ -845,13 +845,14 @@ export default function AppointmentScreen() {
 								<ThemeText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 15 }}>
 									Seleccionar Servicio
 								</ThemeText>
-								<ScrollView
-									showsVerticalScrollIndicator={false}
-									style={{
-										height: 220, // Fixed height to maintain layout
-										borderRadius: 10,
-										backgroundColor: 'rgba(255, 255, 255, 0.05)'
-									}}
+							<ScrollView
+								showsVerticalScrollIndicator={false}
+								nestedScrollEnabled={true}
+								style={{
+									height: 220, // Fixed height to maintain layout
+									borderRadius: 10,
+									backgroundColor: 'rgba(255, 255, 255, 0.05)'
+								}}
 									contentContainerStyle={{
 										padding: 10,
 										gap: 12
